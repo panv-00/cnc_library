@@ -1382,6 +1382,8 @@ void cnc_terminal_set_row_bg(cnc_terminal *t, size_t row, const char *color)
 
 int cnc_terminal_getch(cnc_terminal *t)
 {
+  // TODO: SOLVE PASTE DATA BUG
+
   uint16_t cols = t->scr_cols;
   uint16_t rows = t->scr_rows;
 
