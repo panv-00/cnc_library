@@ -1393,15 +1393,32 @@ int cnc_terminal_getch(cnc_terminal *t)
 
   while (ch_sum == 0)
   {
-
     ioctl(STDIN_FILENO, FIONREAD, &bytes_read);
 
-    ch_sum = 0;
-
-    for (int i = 0; i < bytes_read; i++)
+    if (bytes_read > 0)
     {
       ch = getchar();
-      ch_sum += ch;
+
+      if (ch != KEY_ESCAPE)
+      {
+        return ch;
+      }
+
+      else if (bytes_read == 1)
+      {
+        return ch;
+      }
+
+      else
+      {
+        ch_sum = ch;
+
+        for (int i = 0; i < bytes_read - 1; i++)
+        {
+          ch = getchar();
+          ch_sum += ch;
+        }
+      }
     }
 
     if (ch_sum == 0)
