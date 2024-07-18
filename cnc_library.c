@@ -748,6 +748,9 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r)
 
 cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 {
+  CLRSCR;
+  HOME_POSITION;
+
   cnc_terminal *t = (cnc_terminal *)malloc(sizeof(cnc_terminal));
 
   if (!t)
@@ -1437,6 +1440,9 @@ int cnc_terminal_getch(cnc_terminal *t)
 
       if (rows != t->scr_rows || cols != t->scr_cols)
       {
+        CLRSCR;
+        HOME_POSITION;
+
         rows = t->scr_rows;
         cols = t->scr_cols;
 
