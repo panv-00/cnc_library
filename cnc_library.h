@@ -61,11 +61,6 @@
 #define COLOR_CODE_CYAN_BG 113
 #define COLOR_CODE_WHITE_BG 114
 
-// following function returns 1 for bg color and 2 for fg color
-// it ultimitely sets the color in char *color
-// this function will return 0 when resetting colors
-int _color_code_to_color(int color_code, char **color);
-
 /*** 2. BUFFER ***/
 typedef struct
 {
@@ -232,7 +227,6 @@ bool cnc_terminal_row_fg_is_set(cnc_terminal *t, size_t row);
 void cnc_terminal_set_row_fg(cnc_terminal *t, size_t row, const char *color);
 void cnc_terminal_set_row_bg(cnc_terminal *t, size_t row, const char *color);
 int cnc_terminal_getch(cnc_terminal *t);
-int _cnc_terminal_get_user_input(cnc_terminal *t);
 int cnc_terminal_get_user_input(cnc_terminal *t);
 void cnc_terminal_destroy(cnc_terminal *t);
 

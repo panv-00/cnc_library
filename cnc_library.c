@@ -2,6 +2,11 @@
 
 /*** 0. Static Functions Declaration ***/
 
+// following function returns 1 for bg color and 2 for fg color
+// it ultimitely sets the color in char *color
+// this function will return 0 when resetting colors
+static int _color_code_to_color(int color_code, char **color);
+
 // Vim-Like functions
 static void _VimMode__k(cnc_widget *w);
 static void _VimMode__j(cnc_widget *w);
@@ -20,8 +25,11 @@ static void _DeleteChar(cnc_widget *w);
 // screen buffer index calculator
 static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r);
 
+// get user input
+static int _cnc_terminal_get_user_input(cnc_terminal *t);
+
 /*** 1. COLORS ***/
-int _color_code_to_color(int color_code, char **color)
+static int _color_code_to_color(int color_code, char **color)
 {
   switch (color_code)
   {
@@ -1404,20 +1412,17 @@ int cnc_terminal_getch(cnc_terminal *t)
         return ch;
       }
 
-      else if (bytes_read == 1)
+      if (bytes_read == 1)
       {
         return ch;
       }
 
-      else
-      {
-        ch_sum = ch;
+      ch_sum = ch;
 
-        for (int i = 0; i < bytes_read - 1; i++)
-        {
-          ch = getchar();
-          ch_sum += ch;
-        }
+      for (int i = 0; i < bytes_read - 1; i++)
+      {
+        ch = getchar();
+        ch_sum += ch;
       }
     }
 
@@ -1449,7 +1454,7 @@ int cnc_terminal_getch(cnc_terminal *t)
   return ch_sum;
 }
 
-int _cnc_terminal_get_user_input(cnc_terminal *t)
+static int _cnc_terminal_get_user_input(cnc_terminal *t)
 {
   cnc_widget *fw = t->focused_widget;
   int result = cnc_terminal_getch(t);
