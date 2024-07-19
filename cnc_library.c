@@ -26,6 +26,7 @@ static void _DeleteChar(cnc_widget *w);
 static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r);
 
 // get user input
+static int _cnc_terminal_getch(cnc_terminal *t);
 static int _cnc_terminal_get_user_input(cnc_terminal *t);
 
 /*** 1. COLORS ***/
@@ -1391,70 +1392,46 @@ void cnc_terminal_set_row_bg(cnc_terminal *t, size_t row, const char *color)
   cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, color, 0);
 }
 
-int cnc_terminal_getch(cnc_terminal *t)
+static int _cnc_terminal_getch(cnc_terminal *t)
 {
-  // TODO: SOLVE PASTE DATA BUG
-
-  uint16_t cols = t->scr_cols;
-  uint16_t rows = t->scr_rows;
-
   int bytes_read;
-  int ch;
+  char ch;
   int ch_sum = 0;
 
-  while (ch_sum == 0)
+  ioctl(STDIN_FILENO, FIONREAD, &bytes_read);
+
+  if (bytes_read < 0)
   {
-    ioctl(STDIN_FILENO, FIONREAD, &bytes_read);
+    return -1;
+  }
 
-    if (bytes_read > 0)
-    {
-      ch = getchar();
+  if (bytes_read == 0)
+  {
+    return 0;
+  }
 
-      if (ch != KEY_ESCAPE)
-      {
-        return ch;
-      }
+  read(STDIN_FILENO, &ch, 1);
 
-      if (bytes_read == 1)
-      {
-        return ch;
-      }
+  if (bytes_read == 1)
+  {
+    return ch;
+  }
 
-      ch_sum = ch;
+  if (ch != KEY_ESCAPE)
+  {
+    return ch;
+  }
 
-      for (int i = 0; i < bytes_read - 1; i++)
-      {
-        ch = getchar();
-        ch_sum += ch;
-      }
-    }
+  ch_sum = ch;
 
-    if (ch_sum == 0)
-    {
-      // detect terminal resize
-      // FIXME: VERY EXPENSIVE. CHECKING TERMINAL SIZE VERY OFTEN
-      if (!cnc_terminal_get_size(t))
-      {
-        return 0;
-      }
+  for (int i = 0; i < bytes_read - 1; i++)
+  {
+    read(STDIN_FILENO, &ch, 1);
+    ch_sum += ch;
+  }
 
-      if (rows != t->scr_rows || cols != t->scr_cols)
-      {
-        CLRSCR;
-        HOME_POSITION;
-
-        rows = t->scr_rows;
-        cols = t->scr_cols;
-
-        t->screen_buffer = cnc_buffer_resize(t->screen_buffer,
-                                             (t->scr_cols + 16) * t->scr_rows);
-        cnc_terminal_screenbuffer_reset(t);
-        cnc_terminal_setup_widgets(t);
-        cnc_terminal_update_and_redraw(t);
-      }
-
-      usleep(10000);
-    }
+  if (ch_sum == 0)
+  {
   }
 
   return ch_sum;
@@ -1462,8 +1439,40 @@ int cnc_terminal_getch(cnc_terminal *t)
 
 static int _cnc_terminal_get_user_input(cnc_terminal *t)
 {
+  uint16_t cols = t->scr_cols;
+  uint16_t rows = t->scr_rows;
+
   cnc_widget *fw = t->focused_widget;
-  int result = cnc_terminal_getch(t);
+  int result = 0;
+
+  while (result == 0)
+  {
+    // detect terminal resize
+    // FIXME: VERY EXPENSIVE. CHECKING TERMINAL SIZE VERY OFTEN
+    if (!cnc_terminal_get_size(t))
+    {
+      return 0;
+    }
+
+    if (rows != t->scr_rows || cols != t->scr_cols)
+    {
+      CLRSCR;
+      HOME_POSITION;
+
+      rows = t->scr_rows;
+      cols = t->scr_cols;
+
+      t->screen_buffer =
+          cnc_buffer_resize(t->screen_buffer, (t->scr_cols + 16) * t->scr_rows);
+      cnc_terminal_screenbuffer_reset(t);
+      cnc_terminal_setup_widgets(t);
+      cnc_terminal_update_and_redraw(t);
+    }
+
+    usleep(10000);
+
+    result = _cnc_terminal_getch(t);
+  }
 
   // exit insert mode with ctrl-c
   if (t->mode == MODE_INS && result == CTRL_KEY('c'))
