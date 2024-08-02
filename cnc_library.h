@@ -199,6 +199,8 @@ typedef struct
   size_t scr_cols;
   struct termios orig_term;
   bool in_raw_mode;
+  bool can_change_mode;
+  bool can_change_focus;
   cnc_terminal_mode mode;
   cnc_buffer *screen_buffer;
   size_t widgets_count;

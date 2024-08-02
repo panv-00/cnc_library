@@ -766,6 +766,8 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
   t->scr_rows = 0;
   t->scr_cols = 0;
   t->in_raw_mode = false;
+  t->can_change_mode = true;
+  t->can_change_focus = true;
   t->widgets_count = 0;
   t->cursor_col = 1;
   t->cursor_row = 1;
@@ -865,6 +867,11 @@ bool cnc_terminal_get_size(cnc_terminal *t)
 
 void cnc_terminal_set_mode(cnc_terminal *t, cnc_terminal_mode mode)
 {
+  if (!t->can_change_mode)
+  {
+    return;
+  }
+
   if (mode == MODE_CMD)
   {
     CURSOR_CMD;
@@ -1052,6 +1059,11 @@ cnc_widget *cnc_terminal_focused_widget(cnc_terminal *t)
 
 void cnc_terminal_focus_next(cnc_terminal *t)
 {
+  if (!t->can_change_focus)
+  {
+    return;
+  }
+
   int focused_index = -1;
 
   for (size_t i = 0; i < t->widgets_count; i++)
