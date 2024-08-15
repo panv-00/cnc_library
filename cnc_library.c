@@ -8,19 +8,19 @@
 static int _color_code_to_color(int color_code, char **color);
 
 // Vim-Like functions
-static void _VimMode__k(cnc_widget *w);
-static void _VimMode__j(cnc_widget *w);
-static void _VimMode__l(cnc_widget *w);
-static void _VimMode__h(cnc_widget *w);
-static void _VimMode__x(cnc_widget *w);
-static void _VimMode__0(cnc_widget *w);
-static void _VimMode__$(cnc_widget *w);
+static void _vim_mode_k(cnc_widget *w);
+static void _vim_mode_j(cnc_widget *w);
+static void _vim_mode_l(cnc_widget *w);
+static void _vim_mode_h(cnc_widget *w);
+static void _vim_mode_x(cnc_widget *w);
+static void _vim_mode_0(cnc_widget *w);
+static void _vim_mode_$(cnc_widget *w);
 
 // page_up | page_down
-static void _PageUp(cnc_widget *w);
-static void _PageDn(cnc_widget *w);
-static void _InsertChar(cnc_widget *w, char c);
-static void _DeleteChar(cnc_widget *w);
+static void _page_up(cnc_widget *w);
+static void _page_dn(cnc_widget *w);
+static void _insert_char(cnc_widget *w, char c);
+static void _delete_char(cnc_widget *w);
 
 // screen buffer index calculator
 static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r);
@@ -587,7 +587,7 @@ void POSCURSOR(size_t c, size_t r)
 }
 
 // Vim-Like functions
-static void _VimMode__k(cnc_widget *w)
+static void _vim_mode_k(cnc_widget *w)
 {
   if (w && w->type == WIDGET_DISPLAY &&
       w->index + w->frame.height < w->data_index)
@@ -596,7 +596,7 @@ static void _VimMode__k(cnc_widget *w)
   }
 }
 
-static void _VimMode__j(cnc_widget *w)
+static void _vim_mode_j(cnc_widget *w)
 {
   if (w && w->type == WIDGET_DISPLAY && w->index > 0)
   {
@@ -604,7 +604,7 @@ static void _VimMode__j(cnc_widget *w)
   }
 }
 
-static void _VimMode__l(cnc_widget *w)
+static void _vim_mode_l(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT && w->data_index < w->data->length)
   {
@@ -617,7 +617,7 @@ static void _VimMode__l(cnc_widget *w)
   }
 }
 
-static void _VimMode__h(cnc_widget *w)
+static void _vim_mode_h(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT && w->data_index > 0)
   {
@@ -630,7 +630,7 @@ static void _VimMode__h(cnc_widget *w)
   }
 }
 
-static void _VimMode__x(cnc_widget *w)
+static void _vim_mode_x(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT && w->data_index < w->data->length)
   {
@@ -638,7 +638,7 @@ static void _VimMode__x(cnc_widget *w)
   }
 }
 
-static void _VimMode__0(cnc_widget *w)
+static void _vim_mode_0(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT)
   {
@@ -655,7 +655,7 @@ static void _VimMode__0(cnc_widget *w)
   }
 }
 
-static void _VimMode__$(cnc_widget *w)
+static void _vim_mode_$(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT)
   {
@@ -673,7 +673,7 @@ static void _VimMode__$(cnc_widget *w)
   }
 }
 
-static void _PageUp(cnc_widget *w)
+static void _page_up(cnc_widget *w)
 {
   if (!w || w->type != WIDGET_DISPLAY)
   {
@@ -691,7 +691,7 @@ static void _PageUp(cnc_widget *w)
   }
 }
 
-static void _PageDn(cnc_widget *w)
+static void _page_dn(cnc_widget *w)
 {
   if (w && w->type == WIDGET_DISPLAY && w->index > 0)
   {
@@ -707,7 +707,7 @@ static void _PageDn(cnc_widget *w)
   }
 }
 
-static void _InsertChar(cnc_widget *w, char c)
+static void _insert_char(cnc_widget *w, char c)
 {
   if (w && w->type == WIDGET_PROMPT)
   {
@@ -723,7 +723,7 @@ static void _InsertChar(cnc_widget *w, char c)
   }
 }
 
-static void _DeleteChar(cnc_widget *w)
+static void _delete_char(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT)
   {
@@ -1200,8 +1200,18 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
       size_t length = 0;
       size_t skip_rows = 0;
 
+      // flag to add newline if last character is not a newline
+      bool add_new_line = (w->data->contents[w->data->length - 1] != '\n');
+
       // save number of rows in data_index
       w->data_index = 0;
+
+      // add newline an the end of the buffer
+      // needed for lines calculation
+      if (add_new_line)
+      {
+        cnc_buffer_append(w->data, "\n");
+      }
 
       // dry run to calculate the number of rows
       for (size_t i = 0; i < w->data->length; i++)
@@ -1251,7 +1261,7 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
 
       if (w->data_index > w->frame.height)
       {
-        skip_rows = w->data_index - w->frame.height;
+        skip_rows = w->data_index - w->frame.height - 1;
       }
 
       // Actual writing of data
@@ -1374,6 +1384,13 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
         sb_index = _index_at_cr(t, col, row_index);
         cnc_buffer_replace_char(t->screen_buffer, sb_index, w->frame.width,
                                 ' ');
+      }
+
+      // remove the newline from the end of the buffer
+      // this was added for lines calculation
+      if (add_new_line)
+      {
+        cnc_buffer_delete_char(w->data, w->data->length - 1);
       }
     }
     break;
@@ -1506,14 +1523,14 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     // result is a valid character
     if (result >= ' ' && result <= '~')
     {
-      _InsertChar(fw, result);
+      _insert_char(fw, result);
       return result;
     }
 
     // result is backspace
     if (result == KEY_BACKSPACE)
     {
-      _DeleteChar(fw);
+      _delete_char(fw);
       return result;
     }
   }
@@ -1522,30 +1539,30 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
   {
   case KEY_ARROW_UP:
   case 'k':
-    _VimMode__k(fw);
+    _vim_mode_k(fw);
     return result;
 
   case KEY_ARROW_DN:
   case 'j':
-    _VimMode__j(fw);
+    _vim_mode_j(fw);
     return result;
 
   case KEY_ARROW_RT:
   case 'l':
-    _VimMode__l(fw);
+    _vim_mode_l(fw);
     return result;
 
   case KEY_ARROW_LT:
   case 'h':
-    _VimMode__h(fw);
+    _vim_mode_h(fw);
     return result;
 
   case KEY_PAGE_UP:
-    _PageUp(fw);
+    _page_up(fw);
     return result;
 
   case KEY_PAGE_DN:
-    _PageDn(fw);
+    _page_dn(fw);
     return result;
 
   case KEY_ESCAPE:
@@ -1572,20 +1589,20 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     return result;
 
   case 'A':
-    _VimMode__$(fw);
+    _vim_mode_$(fw);
     cnc_terminal_set_mode(t, MODE_INS);
     return result;
 
   case 'x':
-    _VimMode__x(fw);
+    _vim_mode_x(fw);
     return result;
 
   case '0':
-    _VimMode__0(fw);
+    _vim_mode_0(fw);
     return result;
 
   case '$':
-    _VimMode__$(fw);
+    _vim_mode_$(fw);
     return result;
 
   default:
