@@ -1261,7 +1261,7 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
 
       if (w->data_index > w->frame.height)
       {
-        skip_rows = w->data_index - w->frame.height - 1;
+        skip_rows = w->data_index - w->frame.height;
       }
 
       // Actual writing of data
