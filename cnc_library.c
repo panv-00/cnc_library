@@ -1495,7 +1495,7 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
           cnc_buffer_resize(t->screen_buffer, (t->scr_cols + 16) * t->scr_rows);
       cnc_terminal_screenbuffer_reset(t);
       cnc_terminal_setup_widgets(t);
-      cnc_terminal_update_and_redraw(t);
+      // cnc_terminal_update_and_redraw(t);
     }
 
     usleep(10000);
