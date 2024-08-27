@@ -747,6 +747,34 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r)
   return (r - 1) * (t->scr_cols + 16) + c + 9;
 }
 
+// resize flag
+volatile sig_atomic_t resize_flag = 0;
+static void _handle_resize(int sig) { resize_flag = 1; }
+
+static void _cnc_terminal_check_for_resize(cnc_terminal *t)
+{
+  if (resize_flag)
+  {
+    resize_flag = 0;
+    if (!cnc_terminal_get_size(t))
+    {
+      return;
+    }
+
+    CLRSCR;
+    HOME_POSITION;
+
+    uint16_t new_rows = t->scr_rows;
+    uint16_t new_cols = t->scr_cols;
+
+    t->screen_buffer =
+        cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
+    cnc_terminal_screenbuffer_reset(t);
+    cnc_terminal_setup_widgets(t);
+    cnc_terminal_update_and_redraw(t);
+  }
+}
+
 cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 {
   CLRSCR;
@@ -758,6 +786,12 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
   {
     return NULL;
   }
+
+  // initialize signal handling
+  t->sa.sa_handler = _handle_resize;
+  t->sa.sa_flags = SA_RESTART;
+  sigemptyset(&t->sa.sa_mask);
+  sigaction(SIGWINCH, &t->sa, NULL);
 
   // initialize terminal settings
   t->min_width = min_width;
@@ -1468,8 +1502,8 @@ static int _cnc_terminal_getch(cnc_terminal *t)
 
 static int _cnc_terminal_get_user_input(cnc_terminal *t)
 {
-  uint16_t cols = t->scr_cols;
-  uint16_t rows = t->scr_rows;
+  // uint16_t cols = t->scr_cols;
+  // uint16_t rows = t->scr_rows;
 
   cnc_widget *fw = t->focused_widget;
   int result = 0;
@@ -1477,30 +1511,9 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
   while (result == 0)
   {
     // detect terminal resize
-    // FIXME: VERY EXPENSIVE. CHECKING TERMINAL SIZE VERY OFTEN
-    if (!cnc_terminal_get_size(t))
-    {
-      return 0;
-    }
-
-    if (rows != t->scr_rows || cols != t->scr_cols)
-    {
-      CLRSCR;
-      HOME_POSITION;
-
-      rows = t->scr_rows;
-      cols = t->scr_cols;
-
-      t->screen_buffer =
-          cnc_buffer_resize(t->screen_buffer, (t->scr_cols + 16) * t->scr_rows);
-      cnc_terminal_screenbuffer_reset(t);
-      cnc_terminal_setup_widgets(t);
-      cnc_terminal_update_and_redraw(t);
-    }
-
-    usleep(10000);
-
+    _cnc_terminal_check_for_resize(t);
     result = _cnc_terminal_getch(t);
+    usleep(10000);
   }
 
   // exit insert mode with ctrl-c
@@ -1613,7 +1626,6 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
 int cnc_terminal_get_user_input(cnc_terminal *t)
 {
   int return_value = _cnc_terminal_get_user_input(t);
-
   cnc_terminal_update_and_redraw(t);
 
   return return_value;

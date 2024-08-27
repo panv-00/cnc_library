@@ -3,6 +3,7 @@
 
 /*** 0. GENERAL ***/
 #include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -192,9 +193,11 @@ typedef enum
 
 typedef struct
 {
+  // signal handling struct
+  struct sigaction sa;
+
   size_t min_width;
   size_t min_height;
-
   size_t scr_rows;
   size_t scr_cols;
   struct termios orig_term;
