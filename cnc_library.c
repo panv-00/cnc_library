@@ -751,7 +751,7 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r)
 volatile sig_atomic_t resize_flag = 0;
 static void _handle_resize(int sig) { resize_flag = 1; }
 
-static void _cnc_terminal_check_for_resize(cnc_terminal *t)
+void cnc_terminal_check_for_resize(cnc_terminal *t)
 {
   if (resize_flag)
   {
@@ -1511,7 +1511,7 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
   while (result == 0)
   {
     // detect terminal resize
-    _cnc_terminal_check_for_resize(t);
+    cnc_terminal_check_for_resize(t);
     result = _cnc_terminal_getch(t);
     usleep(10000);
   }
