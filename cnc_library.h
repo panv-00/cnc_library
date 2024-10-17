@@ -17,50 +17,50 @@
 #define USC 31 // '\x1F'
 
 // max buffers sizes
-#define INFO_BUFFER_SIZE 511
-#define PROMPT_BUFFER_SIZE 511
+#define INFO_BUFFER_SIZE    511
+#define PROMPT_BUFFER_SIZE  511
 #define DISPLAY_BUFFER_SIZE 99999
 
 /*** 1. COLORS ***/
 // each color define has a size of 5 bytes, except COLOR_DEFAULT is 4 bytes
-#define COLOR_NONE "\x1f\x1f\x1f\x1f\x1f"
-#define COLOR_DEFAULT "\x1b[0m" // 4 bytes
-#define COLOR_BLACK_FG "\x1b[30m"
-#define COLOR_RED_FG "\x1b[31m"
-#define COLOR_GREEN_FG "\x1b[32m"
-#define COLOR_YELLOW_FG "\x1b[33m"
-#define COLOR_BLUE_FG "\x1b[34m"
+#define COLOR_NONE       "\x1f\x1f\x1f\x1f\x1f"
+#define COLOR_DEFAULT    "\x1b[0m" // 4 bytes
+#define COLOR_BLACK_FG   "\x1b[30m"
+#define COLOR_RED_FG     "\x1b[31m"
+#define COLOR_GREEN_FG   "\x1b[32m"
+#define COLOR_YELLOW_FG  "\x1b[33m"
+#define COLOR_BLUE_FG    "\x1b[34m"
 #define COLOR_MAGENTA_FG "\x1b[35m"
-#define COLOR_CYAN_FG "\x1b[36m"
-#define COLOR_WHITE_FG "\x1b[37m"
-#define COLOR_BLACK_BG "\x1b[40m"
-#define COLOR_RED_BG "\x1b[41m"
-#define COLOR_GREEN_BG "\x1b[42m"
-#define COLOR_YELLOW_BG "\x1b[43m"
-#define COLOR_BLUE_BG "\x1b[44m"
+#define COLOR_CYAN_FG    "\x1b[36m"
+#define COLOR_WHITE_FG   "\x1b[37m"
+#define COLOR_BLACK_BG   "\x1b[40m"
+#define COLOR_RED_BG     "\x1b[41m"
+#define COLOR_GREEN_BG   "\x1b[42m"
+#define COLOR_YELLOW_BG  "\x1b[43m"
+#define COLOR_BLUE_BG    "\x1b[44m"
 #define COLOR_MAGENTA_BG "\x1b[45m"
-#define COLOR_CYAN_BG "\x1b[46m"
-#define COLOR_WHITE_BG "\x1b[47m"
+#define COLOR_CYAN_BG    "\x1b[46m"
+#define COLOR_WHITE_BG   "\x1b[47m"
 
-#define COLOR_INFO_BYTE 5
-#define COLOR_CODE_NONE 97
-#define COLOR_CODE_DEFAULT 98
-#define COLOR_CODE_BLACK_FG 99
-#define COLOR_CODE_RED_FG 100
-#define COLOR_CODE_GREEN_FG 101
-#define COLOR_CODE_YELLOW_FG 102
-#define COLOR_CODE_BLUE_FG 103
+#define COLOR_INFO_BYTE       5
+#define COLOR_CODE_NONE       97
+#define COLOR_CODE_DEFAULT    98
+#define COLOR_CODE_BLACK_FG   99
+#define COLOR_CODE_RED_FG     100
+#define COLOR_CODE_GREEN_FG   101
+#define COLOR_CODE_YELLOW_FG  102
+#define COLOR_CODE_BLUE_FG    103
 #define COLOR_CODE_MAGENTA_FG 104
-#define COLOR_CODE_CYAN_FG 105
-#define COLOR_CODE_WHITE_FG 106
-#define COLOR_CODE_BLACK_BG 107
-#define COLOR_CODE_RED_BG 108
-#define COLOR_CODE_GREEN_BG 109
-#define COLOR_CODE_YELLOW_BG 110
-#define COLOR_CODE_BLUE_BG 111
+#define COLOR_CODE_CYAN_FG    105
+#define COLOR_CODE_WHITE_FG   106
+#define COLOR_CODE_BLACK_BG   107
+#define COLOR_CODE_RED_BG     108
+#define COLOR_CODE_GREEN_BG   109
+#define COLOR_CODE_YELLOW_BG  110
+#define COLOR_CODE_BLUE_BG    111
 #define COLOR_CODE_MAGENTA_BG 112
-#define COLOR_CODE_CYAN_BG 113
-#define COLOR_CODE_WHITE_BG 114
+#define COLOR_CODE_CYAN_BG    113
+#define COLOR_CODE_WHITE_BG   114
 
 /*** 2. BUFFER ***/
 typedef struct
@@ -150,33 +150,33 @@ void cnc_widget_destroy(cnc_widget *w);
 /*** 4. TERMINAL ***/
 
 // Cursor and Screen Stuff
-#define CLRSCR write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8)
+#define CLRSCR        write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8)
 #define HOME_POSITION write(STDOUT_FILENO, "\x1b[H", 3)
-#define HIDE_CURSOR write(STDOUT_FILENO, "\x1b[?25l", 6)
-#define SHOW_CURSOR write(STDOUT_FILENO, "\x1b[?25h", 6)
-#define CURSOR_INS write(STDOUT_FILENO, "\x1b[5 q", 5)
-#define CURSOR_CMD write(STDOUT_FILENO, "\x1b[1 q", 5)
+#define HIDE_CURSOR   write(STDOUT_FILENO, "\x1b[?25l", 6)
+#define SHOW_CURSOR   write(STDOUT_FILENO, "\x1b[?25h", 6)
+#define CURSOR_INS    write(STDOUT_FILENO, "\x1b[5 q", 5)
+#define CURSOR_CMD    write(STDOUT_FILENO, "\x1b[1 q", 5)
 
 // Keyboard
 // CTRL-KEY Combination
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 // Custom Key Characters
-#define KEY_TAB 9
-#define KEY_ENTER 10
-#define KEY_ESCAPE 27
-#define KEY_SPACE 32
+#define KEY_TAB       9
+#define KEY_ENTER     10
+#define KEY_ESCAPE    27
+#define KEY_SPACE     32
 #define KEY_BACKSPACE 127
-#define KEY_ARROW_UP 183
-#define KEY_ARROW_DN 184
-#define KEY_ARROW_RT 185
-#define KEY_ARROW_LT 186
-#define KEY_END 188
-#define KEY_HOME 190
-#define KEY_INSERT 294
-#define KEY_DELETE 295
-#define KEY_PAGE_UP 297
-#define KEY_PAGE_DN 298
+#define KEY_ARROW_UP  183
+#define KEY_ARROW_DN  184
+#define KEY_ARROW_RT  185
+#define KEY_ARROW_LT  186
+#define KEY_END       188
+#define KEY_HOME      190
+#define KEY_INSERT    294
+#define KEY_DELETE    295
+#define KEY_PAGE_UP   297
+#define KEY_PAGE_DN   298
 
 // Terminal Size Error
 #define TERM_TOO_SMALL -1
