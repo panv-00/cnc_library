@@ -12,9 +12,11 @@ static void _vim_mode_k(cnc_widget *w);
 static void _vim_mode_j(cnc_widget *w);
 static void _vim_mode_l(cnc_widget *w);
 static void _vim_mode_h(cnc_widget *w);
-static void _vim_mode_x(cnc_widget *w);
+static void _vim_mode_e(cnc_widget *w);
+static void _vim_mode_b(cnc_widget *w);
 static void _vim_mode_0(cnc_widget *w);
 static void _vim_mode_$(cnc_widget *w);
+static void _vim_mode_x(cnc_widget *w);
 
 // page_up | page_down
 static void _page_up(cnc_widget *w);
@@ -630,11 +632,64 @@ static void _vim_mode_h(cnc_widget *w)
   }
 }
 
-static void _vim_mode_x(cnc_widget *w)
+static void _vim_mode_e(cnc_widget *w)
 {
-  if (w && w->type == WIDGET_PROMPT && w->data_index < w->data->length)
+  bool move_forward = w->data_index < w->data->length;
+  bool curr_char_is_space = w->data->contents[w->data_index] == ' ';
+
+  if (move_forward)
   {
-    cnc_buffer_delete_char(w->data, w->data_index);
+    _vim_mode_l(w);
+    move_forward = w->data_index < w->data->length;
+    curr_char_is_space = w->data->contents[w->data_index] == ' ';
+  }
+
+  while (move_forward && curr_char_is_space)
+  {
+    _vim_mode_l(w);
+    move_forward = w->data_index < w->data->length;
+    curr_char_is_space = w->data->contents[w->data_index] == ' ';
+  }
+
+  while (move_forward && !curr_char_is_space)
+  {
+    _vim_mode_l(w);
+    move_forward = w->data_index < w->data->length;
+    curr_char_is_space = w->data->contents[w->data_index] == ' ';
+  }
+
+  _vim_mode_h(w);
+}
+
+static void _vim_mode_b(cnc_widget *w)
+{
+  bool move_backward = w->data_index > 0;
+  bool curr_char_is_space = w->data->contents[w->data_index] == ' ';
+
+  if (move_backward)
+  {
+    _vim_mode_h(w);
+    move_backward = w->data_index > 0;
+    curr_char_is_space = w->data->contents[w->data_index] == ' ';
+  }
+
+  while (move_backward && curr_char_is_space)
+  {
+    _vim_mode_h(w);
+    move_backward = w->data_index > 0;
+    curr_char_is_space = w->data->contents[w->data_index] == ' ';
+  }
+
+  while (move_backward && !curr_char_is_space)
+  {
+    _vim_mode_h(w);
+    move_backward = w->data_index > 0;
+    curr_char_is_space = w->data->contents[w->data_index] == ' ';
+  }
+
+  if (w->data_index > 0)
+  {
+    _vim_mode_l(w);
   }
 }
 
@@ -670,6 +725,14 @@ static void _vim_mode_$(cnc_widget *w)
   if (w && w->type == WIDGET_DISPLAY)
   {
     w->index = 0;
+  }
+}
+
+static void _vim_mode_x(cnc_widget *w)
+{
+  if (w && w->type == WIDGET_PROMPT && w->data_index < w->data->length)
+  {
+    cnc_buffer_delete_char(w->data, w->data_index);
   }
 }
 
@@ -1502,9 +1565,6 @@ static int _cnc_terminal_getch(cnc_terminal *t)
 
 static int _cnc_terminal_get_user_input(cnc_terminal *t)
 {
-  // uint16_t cols = t->scr_cols;
-  // uint16_t rows = t->scr_rows;
-
   cnc_widget *fw = t->focused_widget;
   int result = 0;
 
@@ -1570,6 +1630,14 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     _vim_mode_h(fw);
     return result;
 
+  case 'e':
+    _vim_mode_e(fw);
+    return result;
+
+  case 'b':
+    _vim_mode_b(fw);
+    return result;
+
   case KEY_PAGE_UP:
     _page_up(fw);
     return result;
@@ -1606,16 +1674,16 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     cnc_terminal_set_mode(t, MODE_INS);
     return result;
 
-  case 'x':
-    _vim_mode_x(fw);
-    return result;
-
   case '0':
     _vim_mode_0(fw);
     return result;
 
   case '$':
     _vim_mode_$(fw);
+    return result;
+
+  case 'x':
+    _vim_mode_x(fw);
     return result;
 
   default:
