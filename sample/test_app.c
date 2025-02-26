@@ -45,7 +45,7 @@ int main(void)
 
   cnc_terminal_set_mode(term, MODE_INS);
   cnc_terminal_focus_widget(term, prompt);
-  term->can_change_mode = false;
+  // term->can_change_mode = false;
   term->can_change_focus = false;
 
   cnc_buffer_set_text(titlebar->data, " TEST APP ");
