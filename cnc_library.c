@@ -133,8 +133,8 @@ cnc_buffer *cnc_buffer_init(size_t size)
     return NULL;
   }
 
-  b->size = size;
-  b->length = 0;
+  b->size     = size;
+  b->length   = 0;
   b->contents = (char *)malloc((size + 1) * sizeof(char));
 
   if (!b->contents)
@@ -153,8 +153,8 @@ cnc_buffer *cnc_buffer_init(size_t size)
 
 cnc_buffer *cnc_buffer_resize(cnc_buffer *b, size_t size)
 {
-  b->size = size;
-  b->length = 0;
+  b->size     = size;
+  b->length   = 0;
   b->contents = (char *)realloc(b->contents, (size + 1) * sizeof(char));
 
   if (!b->contents)
@@ -214,7 +214,7 @@ void cnc_buffer_replace_text(cnc_buffer *b, size_t start, size_t len,
   }
 
   size_t text_length = calen(text);
-  size_t length = len;
+  size_t length      = len;
 
   if (text_length - text_start < len)
   {
@@ -275,7 +275,7 @@ size_t cnc_buffer_insert_text(cnc_buffer *b, size_t start, size_t len,
   size_t actual_start = start > b->length ? b->length : start;
 
   // calculate actual_length
-  size_t text_length = calen(text);
+  size_t text_length   = calen(text);
   size_t actual_length = len > text_length ? text_length : len;
 
   if (b->length + actual_length > b->size)
@@ -296,7 +296,7 @@ size_t cnc_buffer_insert_text(cnc_buffer *b, size_t start, size_t len,
     b->contents[i] = text[i - actual_start];
   }
 
-  b->length = b->length + actual_length;
+  b->length              = b->length + actual_length;
   b->contents[b->length] = '\0';
 
   return actual_length;
@@ -333,7 +333,7 @@ size_t cnc_buffer_insert_char(cnc_buffer *b, size_t start, size_t len, char c)
     b->contents[i] = c;
   }
 
-  b->length = b->length + actual_length;
+  b->length              = b->length + actual_length;
   b->contents[b->length] = '\0';
 
   return actual_length;
@@ -382,7 +382,7 @@ bool cnc_buffer_locate_string(cnc_buffer *b, const char *s, size_t *location)
   }
 
   size_t buffer_length = b->length;
-  size_t str_length = calen(s);
+  size_t str_length    = calen(s);
 
   if (buffer_length == 0 || buffer_length < str_length)
   {
@@ -427,7 +427,7 @@ void cnc_buffer_trim(cnc_buffer *b)
   cnc_buffer *temp_buffer = cnc_buffer_init(b->size);
 
   size_t start = 0;
-  size_t end = 0;
+  size_t end   = 0;
 
   while (b->contents[start] == ' ')
   {
@@ -498,7 +498,7 @@ void cnc_buffer_destroy(cnc_buffer *b)
 
 cnc_widget *cnc_widget_init(cnc_widget_type type)
 {
-  cnc_widget *w = (cnc_widget *)malloc(sizeof(cnc_widget));
+  cnc_widget *w      = (cnc_widget *)malloc(sizeof(cnc_widget));
   size_t buffer_size = 0;
 
   if (!w)
@@ -508,14 +508,14 @@ cnc_widget *cnc_widget_init(cnc_widget_type type)
 
   w->frame.origin.col = 1;
   w->frame.origin.row = 1;
-  w->frame.height = 2;
-  w->frame.width = 1;
+  w->frame.height     = 2;
+  w->frame.width      = 1;
 
   w->type = type;
 
-  w->index = 0;
+  w->index      = 0;
   w->data_index = 0;
-  w->data = NULL;
+  w->data       = NULL;
 
   w->background = NULL;
   w->foreground = NULL;
@@ -525,20 +525,20 @@ cnc_widget *cnc_widget_init(cnc_widget_type type)
   switch (type)
   {
   case WIDGET_INFO:
-    buffer_size = INFO_BUFFER_SIZE;
+    buffer_size   = INFO_BUFFER_SIZE;
     w->background = COLOR_GREEN_BG;
     w->foreground = COLOR_BLACK_FG;
-    w->can_focus = false;
+    w->can_focus  = false;
     break;
 
   case WIDGET_PROMPT:
-    buffer_size = PROMPT_BUFFER_SIZE;
+    buffer_size   = PROMPT_BUFFER_SIZE;
     w->foreground = COLOR_CYAN_FG;
-    w->can_focus = true;
+    w->can_focus  = true;
     break;
 
   case WIDGET_DISPLAY:
-    buffer_size = DISPLAY_BUFFER_SIZE;
+    buffer_size  = DISPLAY_BUFFER_SIZE;
     w->can_focus = true;
     break;
   }
@@ -558,7 +558,7 @@ void cnc_widget_reset(cnc_widget *w)
 {
   cnc_buffer_set_text(w->data, "");
   w->data_index = 0;
-  w->index = 0;
+  w->index      = 0;
 }
 
 void cnc_widget_destroy(cnc_widget *w)
@@ -634,27 +634,27 @@ static void _vim_mode_h(cnc_widget *w)
 
 static void _vim_mode_e(cnc_widget *w)
 {
-  bool move_forward = w->data_index < w->data->length;
+  bool move_forward       = w->data_index < w->data->length;
   bool curr_char_is_space = w->data->contents[w->data_index] == ' ';
 
   if (move_forward)
   {
     _vim_mode_l(w);
-    move_forward = w->data_index < w->data->length;
+    move_forward       = w->data_index < w->data->length;
     curr_char_is_space = w->data->contents[w->data_index] == ' ';
   }
 
   while (move_forward && curr_char_is_space)
   {
     _vim_mode_l(w);
-    move_forward = w->data_index < w->data->length;
+    move_forward       = w->data_index < w->data->length;
     curr_char_is_space = w->data->contents[w->data_index] == ' ';
   }
 
   while (move_forward && !curr_char_is_space)
   {
     _vim_mode_l(w);
-    move_forward = w->data_index < w->data->length;
+    move_forward       = w->data_index < w->data->length;
     curr_char_is_space = w->data->contents[w->data_index] == ' ';
   }
 
@@ -663,27 +663,27 @@ static void _vim_mode_e(cnc_widget *w)
 
 static void _vim_mode_b(cnc_widget *w)
 {
-  bool move_backward = w->data_index > 0;
+  bool move_backward      = w->data_index > 0;
   bool curr_char_is_space = w->data->contents[w->data_index] == ' ';
 
   if (move_backward)
   {
     _vim_mode_h(w);
-    move_backward = w->data_index > 0;
+    move_backward      = w->data_index > 0;
     curr_char_is_space = w->data->contents[w->data_index] == ' ';
   }
 
   while (move_backward && curr_char_is_space)
   {
     _vim_mode_h(w);
-    move_backward = w->data_index > 0;
+    move_backward      = w->data_index > 0;
     curr_char_is_space = w->data->contents[w->data_index] == ' ';
   }
 
   while (move_backward && !curr_char_is_space)
   {
     _vim_mode_h(w);
-    move_backward = w->data_index > 0;
+    move_backward      = w->data_index > 0;
     curr_char_is_space = w->data->contents[w->data_index] == ' ';
   }
 
@@ -698,7 +698,7 @@ static void _vim_mode_0(cnc_widget *w)
   if (w && w->type == WIDGET_PROMPT)
   {
     w->data_index = 0;
-    w->index = 0;
+    w->index      = 0;
   }
 
   if (w && w->type == WIDGET_DISPLAY)
@@ -852,22 +852,22 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 
   // initialize signal handling
   t->sa.sa_handler = _handle_resize;
-  t->sa.sa_flags = SA_RESTART;
+  t->sa.sa_flags   = SA_RESTART;
   sigemptyset(&t->sa.sa_mask);
   sigaction(SIGWINCH, &t->sa, NULL);
 
   // initialize terminal settings
-  t->min_width = min_width;
+  t->min_width  = min_width;
   t->min_height = min_height;
 
-  t->scr_rows = 0;
-  t->scr_cols = 0;
-  t->in_raw_mode = false;
-  t->can_change_mode = true;
+  t->scr_rows         = 0;
+  t->scr_cols         = 0;
+  t->in_raw_mode      = false;
+  t->can_change_mode  = true;
   t->can_change_focus = true;
-  t->widgets_count = 0;
-  t->cursor_col = 1;
-  t->cursor_row = 1;
+  t->widgets_count    = 0;
+  t->cursor_col       = 1;
+  t->cursor_row       = 1;
 
   t->widgets = (cnc_widget **)malloc(sizeof(cnc_widget *));
 
@@ -895,7 +895,7 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
   raw_term.c_oflag &= ~(OPOST);
   raw_term.c_cflag |= (CS8);
   raw_term.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-  raw_term.c_cc[VMIN] = 0;
+  raw_term.c_cc[VMIN]  = 0;
   raw_term.c_cc[VTIME] = 1;
 
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_term) == -1)
@@ -1028,8 +1028,8 @@ cnc_widget *cnc_terminal_add_widget(cnc_terminal *t, cnc_widget_type type)
 
 bool cnc_terminal_setup_widgets(cnc_terminal *t)
 {
-  size_t tlw = 0; // number of two_lines_widgets
-  size_t mlw = 0; // number of multi_line_widgets
+  size_t tlw        = 0; // number of two_lines_widgets
+  size_t mlw        = 0; // number of multi_line_widgets
   size_t global_row = 1;
 
   for (size_t i = 0; i < t->widgets_count; i++)
@@ -1053,7 +1053,7 @@ bool cnc_terminal_setup_widgets(cnc_terminal *t)
   }
 
   // Calculate locations and dimensions
-  size_t set_display_widget = 1;
+  size_t set_display_widget     = 1;
   size_t display_widgets_height = 0;
 
   for (size_t i = 0; i < t->widgets_count; i++)
@@ -1137,7 +1137,7 @@ void cnc_terminal_focus_widget(cnc_terminal *t, cnc_widget *w)
     }
   }
 
-  w->has_focus = true;
+  w->has_focus      = true;
   t->focused_widget = w;
 }
 
@@ -1188,6 +1188,7 @@ void cnc_terminal_redraw(cnc_terminal *t)
 {
   HIDE_CURSOR;
   HOME_POSITION;
+  CLRSCR;
 
   // check if terminal dimensions are within limits
   if (t->scr_cols < t->min_width || t->scr_rows < t->min_height)
@@ -1218,14 +1219,14 @@ void cnc_terminal_redraw(cnc_terminal *t)
 
 void cnc_terminal_update_screen_buffer(cnc_terminal *t)
 {
-  cnc_widget *w = NULL;
+  cnc_widget *w   = NULL;
   size_t sb_index = 0;
   size_t row = 0, col = 0;
 
   // for each widget
   for (size_t i = 0; i < t->widgets_count; i++)
   {
-    w = t->widgets[i];
+    w   = t->widgets[i];
     row = w->frame.origin.row;
     col = w->frame.origin.col;
 
@@ -1287,15 +1288,15 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
       // that will tell us that fg and bg info will follow.
       // this color_info_byte then will be ignored
 
-      char *bg = COLOR_NONE;
-      char *fg = COLOR_NONE;
-      char *tmp_color = COLOR_NONE;
+      char *bg            = COLOR_NONE;
+      char *fg            = COLOR_NONE;
+      char *tmp_color     = COLOR_NONE;
       int color_operation = 0;
 
       size_t last_space_index = 0;
-      size_t start_at_index = 0;
-      size_t length = 0;
-      size_t skip_rows = 0;
+      size_t start_at_index   = 0;
+      size_t length           = 0;
+      size_t skip_rows        = 0;
 
       // flag to add newline if last character is not a newline
       bool add_new_line = (w->data->contents[w->data->length - 1] != '\n');
@@ -1363,8 +1364,8 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
 
       // Actual writing of data
       last_space_index = 0;
-      start_at_index = 0;
-      length = 0;
+      start_at_index   = 0;
+      length           = 0;
 
       // reset data_index
       w->data_index = 0;
@@ -1566,7 +1567,7 @@ static int _cnc_terminal_getch(cnc_terminal *t)
 static int _cnc_terminal_get_user_input(cnc_terminal *t)
 {
   cnc_widget *fw = t->focused_widget;
-  int result = 0;
+  int result     = 0;
 
   while (result == 0)
   {
