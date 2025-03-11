@@ -1193,7 +1193,6 @@ void cnc_terminal_redraw(cnc_terminal *t)
   // check if terminal dimensions are within limits
   if (t->scr_cols < t->min_width || t->scr_rows < t->min_height)
   {
-    CLRSCR;
     printf(".. Please resize your terminal\n\r");
     printf(".. Terminal Size: R=%4zu, C=%4zu\n\r", t->scr_rows, t->scr_cols);
     printf("..      Min Size: R=%4zu, C=%4zu\n\r", t->min_height, t->min_width);
