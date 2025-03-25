@@ -1741,11 +1741,13 @@ void cnc_terminal_destroy(cnc_terminal *t)
 
 // other useful functions
 // Integer to C char array
-const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
+const char *cnc_i_to_cca(int64_t num, bool thousand_separator, int8_t width)
 {
   static char str[27];
-  int8_t i = 0;
-  bool neg = false;
+
+  int8_t i      = 0;
+  bool neg      = false;
+  int8_t fwidth = (width < 0 || width > 26) ? 0 : width;
 
   if (num == INT64_MIN)
   {
@@ -1759,7 +1761,7 @@ const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
     num = -num;
   }
 
-  if (num == 0)
+  else if (num == 0)
   {
     str[i++] = '0';
   }
@@ -1767,6 +1769,7 @@ const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
   else
   {
     int8_t start = i;
+
     while (num > 0)
     {
       str[i++] = (num % 10) + '0';
@@ -1774,6 +1777,7 @@ const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
     }
 
     int8_t end = i - 1;
+
     while (start < end)
     {
       char temp  = str[start];
@@ -1791,6 +1795,7 @@ const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
     for (int j = i - 1; j >= 0; j--)
     {
       count++;
+
       if (count % 3 == 0 && j > 0 && str[j] != '-')
       {
         for (int k = i; k >= j; k--)
@@ -1810,8 +1815,26 @@ const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
     {
       str[j + 1] = str[j];
     }
+
     str[0] = '-';
     i++;
+  }
+
+  if (i < fwidth)
+  {
+    int padding = fwidth - i;
+
+    for (int j = i; j >= 0; j--)
+    {
+      str[j + padding] = str[j];
+    }
+
+    for (int j = 0; j < padding; j++)
+    {
+      str[j] = ' ';
+    }
+
+    i = fwidth;
   }
 
   str[i] = '\0';
