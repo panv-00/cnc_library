@@ -236,6 +236,6 @@ int cnc_terminal_get_user_input(cnc_terminal *t);
 void cnc_terminal_destroy(cnc_terminal *t);
 
 // other useful functions
-const char *cnc_i_to_cca(int64_t num);
+const char *cnc_i_to_cca(int64_t num, bool thousand_separator);
 
 #endif

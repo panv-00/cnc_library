@@ -1741,14 +1741,19 @@ void cnc_terminal_destroy(cnc_terminal *t)
 
 // other useful functions
 // Integer to C char array
-const char *cnc_i_to_cca(int64_t num)
+const char *cnc_i_to_cca(int64_t num, bool thousand_separator)
 {
-  static char str[21];
+  static char str[27];
   int8_t i = 0;
   bool neg = false;
 
-  // change neg flag for negative numbers
-  if (num < 0)
+  if (num == INT64_MIN)
+  {
+    str[i++] = '-';
+    num      = 9223372036854775807;
+  }
+
+  else if (num < 0)
   {
     neg = true;
     num = -num;
@@ -1759,33 +1764,57 @@ const char *cnc_i_to_cca(int64_t num)
     str[i++] = '0';
   }
 
-  while (num > 0)
+  else
   {
-    str[i++] = (num % 10) + '0';
-    num      = num / 10;
+    int8_t start = i;
+    while (num > 0)
+    {
+      str[i++] = (num % 10) + '0';
+      num      = num / 10;
+    }
+
+    int8_t end = i - 1;
+    while (start < end)
+    {
+      char temp  = str[start];
+      str[start] = str[end];
+      str[end]   = temp;
+      start++;
+      end--;
+    }
   }
 
-  // If the number was negative, add the minus sign
+  if (thousand_separator)
+  {
+    int count = 0;
+
+    for (int j = i - 1; j >= 0; j--)
+    {
+      count++;
+      if (count % 3 == 0 && j > 0 && str[j] != '-')
+      {
+        for (int k = i; k >= j; k--)
+        {
+          str[k + 1] = str[k];
+        }
+
+        str[j] = ',';
+        i++;
+      }
+    }
+  }
+
   if (neg)
   {
-    str[i++] = '-';
+    for (int j = i; j >= 0; j--)
+    {
+      str[j + 1] = str[j];
+    }
+    str[0] = '-';
+    i++;
   }
 
-  // Null-terminate the string
   str[i] = '\0';
-
-  // Reverse the string to get the correct order
-  int8_t start = 0;
-  int8_t end   = i - 1;
-
-  while (start < end)
-  {
-    char temp  = str[start];
-    str[start] = str[end];
-    str[end]   = temp;
-    start++;
-    end--;
-  }
 
   return str;
 }
