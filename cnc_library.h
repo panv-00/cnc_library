@@ -235,4 +235,7 @@ void cnc_terminal_set_row_bg(cnc_terminal *t, size_t row, const char *color);
 int cnc_terminal_get_user_input(cnc_terminal *t);
 void cnc_terminal_destroy(cnc_terminal *t);
 
+// other useful functions
+const char *cnc_i_to_cca(int64_t num);
+
 #endif

@@ -1738,3 +1738,54 @@ void cnc_terminal_destroy(cnc_terminal *t)
   HOME_POSITION;
   fflush(stdout);
 }
+
+// other useful functions
+// Integer to C char array
+const char *cnc_i_to_cca(int64_t num)
+{
+  static char str[21];
+  int8_t i = 0;
+  bool neg = false;
+
+  // change neg flag for negative numbers
+  if (num < 0)
+  {
+    neg = true;
+    num = -num;
+  }
+
+  if (num == 0)
+  {
+    str[i++] = '0';
+  }
+
+  while (num > 0)
+  {
+    str[i++] = (num % 10) + '0';
+    num      = num / 10;
+  }
+
+  // If the number was negative, add the minus sign
+  if (neg)
+  {
+    str[i++] = '-';
+  }
+
+  // Null-terminate the string
+  str[i] = '\0';
+
+  // Reverse the string to get the correct order
+  int8_t start = 0;
+  int8_t end   = i - 1;
+
+  while (start < end)
+  {
+    char temp  = str[start];
+    str[start] = str[end];
+    str[end]   = temp;
+    start++;
+    end--;
+  }
+
+  return str;
+}
