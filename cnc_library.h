@@ -164,6 +164,7 @@ void cnc_widget_destroy(cnc_widget *w);
 // Custom Key Characters
 #define KEY_TAB       9
 #define KEY_ENTER     10
+#define KEY_RETURN    13
 #define KEY_ESCAPE    27
 #define KEY_SPACE     32
 #define KEY_BACKSPACE 127
@@ -194,7 +195,8 @@ typedef enum
 typedef struct
 {
   // signal handling struct
-  struct sigaction sa;
+  struct sigaction sa_resize;
+  struct sigaction sa_sigtstp;
 
   size_t min_width;
   size_t min_height;
@@ -215,6 +217,7 @@ typedef struct
 } cnc_terminal;
 
 // terminal functions declaration
+void cnc_terminal_check_for_suspend(cnc_terminal *t);
 void cnc_terminal_check_for_resize(cnc_terminal *t);
 cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height);
 bool cnc_terminal_get_size(cnc_terminal *t);

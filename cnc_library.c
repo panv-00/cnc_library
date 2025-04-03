@@ -1,6 +1,18 @@
 #include "cnc_library.h"
 
 /*** 0. Static Functions Declaration ***/
+static bool _cnc_terminal_set_raw_mode(cnc_terminal *t);
+static void _cnc_terminal_restore(cnc_terminal *t);
+
+// Signals
+
+// suspend flag
+volatile sig_atomic_t suspend_flag = 0;
+static void _handle_sigtstp(int sig) { suspend_flag = 1; }
+
+// resize flag
+volatile sig_atomic_t resize_flag = 0;
+static void _handle_resize(int sig) { resize_flag = 1; }
 
 // following function returns 1 for bg color and 2 for fg color
 // it ultimitely sets the color in char *color
@@ -810,9 +822,30 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r)
   return (r - 1) * (t->scr_cols + 16) + c + 9;
 }
 
-// resize flag
-volatile sig_atomic_t resize_flag = 0;
-static void _handle_resize(int sig) { resize_flag = 1; }
+void cnc_terminal_check_for_suspend(cnc_terminal *t)
+{
+  if (suspend_flag)
+  {
+    suspend_flag = 0;
+
+    _cnc_terminal_restore(t);
+
+    // Set default handler for SIGTSTP
+    signal(SIGTSTP, SIG_DFL);
+
+    // Send SIGTSTP to itself to suspend the process
+    raise(SIGTSTP);
+  }
+
+  else
+  {
+    if (t->in_raw_mode == false)
+    {
+      _cnc_terminal_set_raw_mode(t);
+      cnc_terminal_update_and_redraw(t);
+    }
+  }
+}
 
 void cnc_terminal_check_for_resize(cnc_terminal *t)
 {
@@ -838,11 +871,57 @@ void cnc_terminal_check_for_resize(cnc_terminal *t)
   }
 }
 
-cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
+static bool _cnc_terminal_set_raw_mode(cnc_terminal *t)
 {
   CLRSCR;
   HOME_POSITION;
 
+  // read the current terminal attributes and store them
+  if (tcgetattr(STDIN_FILENO, &t->orig_term) == -1)
+  {
+    return false;
+  }
+
+  // put the terminal in raw mode
+  struct termios raw_term = t->orig_term;
+
+  raw_term.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+  raw_term.c_oflag &= ~(OPOST);
+  raw_term.c_cflag |= (CS8);
+  raw_term.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+  raw_term.c_cc[VMIN]  = 0;
+  raw_term.c_cc[VTIME] = 1;
+
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_term) == -1)
+  {
+    return false;
+  }
+
+  t->in_raw_mode = true;
+
+  return true;
+}
+
+static void _cnc_terminal_restore(cnc_terminal *t)
+{
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &t->orig_term);
+  t->in_raw_mode = false;
+
+  // Restore cursor
+  CURSOR_INS;
+  SHOW_CURSOR;
+
+  // Restore color
+  write(STDOUT_FILENO, COLOR_DEFAULT, 5);
+
+  // Clear screen
+  CLRSCR;
+  HOME_POSITION;
+  fflush(stdout);
+}
+
+cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
+{
   cnc_terminal *t = (cnc_terminal *)malloc(sizeof(cnc_terminal));
 
   if (!t)
@@ -850,11 +929,27 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
     return NULL;
   }
 
-  // initialize signal handling
-  t->sa.sa_handler = _handle_resize;
-  t->sa.sa_flags   = SA_RESTART;
-  sigemptyset(&t->sa.sa_mask);
-  sigaction(SIGWINCH, &t->sa, NULL);
+  // Setup the SIGTSTP signal handler
+  t->sa_sigtstp.sa_handler = _handle_sigtstp;
+  t->sa_sigtstp.sa_flags   = SA_RESTART;
+  sigemptyset(&t->sa_sigtstp.sa_mask);
+
+  if (sigaction(SIGTSTP, &t->sa_sigtstp, NULL) == -1)
+  {
+    cnc_terminal_destroy(t);
+    return NULL;
+  }
+
+  // Setup resize signal handling
+  t->sa_resize.sa_handler = _handle_resize;
+  t->sa_resize.sa_flags   = SA_RESTART;
+  sigemptyset(&t->sa_resize.sa_mask);
+
+  if (sigaction(SIGTSTP, &t->sa_resize, NULL) == -1)
+  {
+    cnc_terminal_destroy(t);
+    return NULL;
+  }
 
   // initialize terminal settings
   t->min_width  = min_width;
@@ -880,32 +975,12 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
   // no widget has focus at the beginning
   t->focused_widget = NULL;
 
-  // read the current terminal attributes and store them
-  if (tcgetattr(STDIN_FILENO, &t->orig_term) == -1)
+  if (_cnc_terminal_set_raw_mode(t) == false)
   {
     cnc_terminal_destroy(t);
 
     return NULL;
   }
-
-  // put the terminal in raw mode
-  struct termios raw_term = t->orig_term;
-
-  raw_term.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-  raw_term.c_oflag &= ~(OPOST);
-  raw_term.c_cflag |= (CS8);
-  raw_term.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-  raw_term.c_cc[VMIN]  = 0;
-  raw_term.c_cc[VTIME] = 1;
-
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_term) == -1)
-  {
-    cnc_terminal_destroy(t);
-
-    return NULL;
-  }
-
-  t->in_raw_mode = true;
 
   // get the terminal size
   if (!cnc_terminal_get_size(t))
@@ -1570,6 +1645,9 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
 
   while (result == 0)
   {
+    // detect suspend command
+    cnc_terminal_check_for_suspend(t);
+
     // detect terminal resize
     cnc_terminal_check_for_resize(t);
     result = _cnc_terminal_getch(t);
@@ -1583,11 +1661,19 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     return result;
   }
 
+  // suspend ...
+
+  if (t->mode == MODE_INS && result == CTRL_KEY('z'))
+  {
+    suspend_flag = 1;
+    return 0;
+  }
+
   // only when prompt has focus
   if (t->mode == MODE_INS && fw && fw->type == WIDGET_PROMPT)
   {
     // user presses ENTER key on a WIDGET_PROMPT
-    if (result == 10 || result == 13)
+    if (result == KEY_ENTER || result == KEY_RETURN)
     {
       result = KEY_ENTER;
       return result;
@@ -1704,8 +1790,7 @@ void cnc_terminal_destroy(cnc_terminal *t)
   // restore terminal
   if (t->in_raw_mode)
   {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &t->orig_term);
-    t->in_raw_mode = false;
+    _cnc_terminal_restore(t);
   }
 
   // destroy screen buffer
@@ -1725,22 +1810,10 @@ void cnc_terminal_destroy(cnc_terminal *t)
 
   free(t);
   t = NULL;
-
-  // Restore cursor
-  CURSOR_INS;
-  SHOW_CURSOR;
-
-  // Restore color
-  write(STDOUT_FILENO, COLOR_DEFAULT, 5);
-
-  // Clear screen
-  CLRSCR;
-  HOME_POSITION;
-  fflush(stdout);
 }
 
 // other useful functions
-// Integer to C char array
+// Format Integer to C char array
 const char *cnc_i_to_cca(int64_t num, bool thousand_separator, int8_t width)
 {
   static char str[27];
