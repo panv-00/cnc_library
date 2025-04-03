@@ -1642,13 +1642,16 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
 
   while (result == 0)
   {
-    // detect terminal resize
+    result = _cnc_terminal_getch(t);
+
+    if (t->mode == MODE_INS && result == CTRL_KEY('z'))
+    {
+      suspend_flag = 1;
+    }
+
+    _cnc_terminal_check_for_suspend(t);
     _cnc_terminal_check_for_resize(t);
 
-    // detect suspend command
-    _cnc_terminal_check_for_suspend(t);
-
-    result = _cnc_terminal_getch(t);
     usleep(10000);
   }
 
@@ -1657,14 +1660,6 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
   {
     cnc_terminal_set_mode(t, MODE_CMD);
     return result;
-  }
-
-  // suspend ...
-
-  if (t->mode == MODE_INS && result == CTRL_KEY('z'))
-  {
-    suspend_flag = 1;
-    return 0;
   }
 
   // only when prompt has focus
