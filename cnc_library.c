@@ -12,8 +12,7 @@ static void _handle_resize(int sig) { resize_flag = 1; }
 
 /*** A. Static Functions Declaration ***/
 
-void _cnc_terminal_check_for_suspend(cnc_terminal *t);
-void _cnc_terminal_check_for_resize(cnc_terminal *t);
+static void _cnc_terminal_check_for_suspend(cnc_terminal *t);
 
 static bool _cnc_terminal_set_raw_mode(cnc_terminal *t);
 static void _cnc_terminal_restore(cnc_terminal *t);
@@ -49,7 +48,7 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t);
 
 /*** B. Static Functions Definition ***/
 
-void _cnc_terminal_check_for_suspend(cnc_terminal *t)
+static void _cnc_terminal_check_for_suspend(cnc_terminal *t)
 {
   if (suspend_flag)
   {
@@ -71,30 +70,6 @@ void _cnc_terminal_check_for_suspend(cnc_terminal *t)
       _cnc_terminal_set_raw_mode(t);
       cnc_terminal_update_and_redraw(t);
     }
-  }
-}
-
-void _cnc_terminal_check_for_resize(cnc_terminal *t)
-{
-  if (resize_flag)
-  {
-    resize_flag = 0;
-    if (!cnc_terminal_get_size(t))
-    {
-      return;
-    }
-
-    CLRSCR;
-    HOME_POSITION;
-
-    uint16_t new_rows = t->scr_rows;
-    uint16_t new_cols = t->scr_cols;
-
-    t->screen_buffer =
-        cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
-    cnc_terminal_screenbuffer_reset(t);
-    cnc_terminal_setup_widgets(t);
-    cnc_terminal_update_and_redraw(t);
   }
 }
 
@@ -926,6 +901,30 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r)
   return (r - 1) * (t->scr_cols + 16) + c + 9;
 }
 
+void cnc_terminal_check_for_resize(cnc_terminal *t)
+{
+  if (resize_flag)
+  {
+    resize_flag = 0;
+    if (!cnc_terminal_get_size(t))
+    {
+      return;
+    }
+
+    CLRSCR;
+    HOME_POSITION;
+
+    uint16_t new_rows = t->scr_rows;
+    uint16_t new_cols = t->scr_cols;
+
+    t->screen_buffer =
+        cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
+    cnc_terminal_screenbuffer_reset(t);
+    cnc_terminal_setup_widgets(t);
+    cnc_terminal_update_and_redraw(t);
+  }
+}
+
 cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 {
   cnc_terminal *t = (cnc_terminal *)malloc(sizeof(cnc_terminal));
@@ -1650,7 +1649,7 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     }
 
     _cnc_terminal_check_for_suspend(t);
-    _cnc_terminal_check_for_resize(t);
+    cnc_terminal_check_for_resize(t);
 
     usleep(10000);
   }
