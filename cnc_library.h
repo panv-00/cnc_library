@@ -217,8 +217,6 @@ typedef struct
 } cnc_terminal;
 
 // terminal functions declaration
-void cnc_terminal_check_for_suspend(cnc_terminal *t);
-void cnc_terminal_check_for_resize(cnc_terminal *t);
 cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height);
 bool cnc_terminal_get_size(cnc_terminal *t);
 void cnc_terminal_set_mode(cnc_terminal *t, cnc_terminal_mode mode);

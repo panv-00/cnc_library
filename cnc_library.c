@@ -1,9 +1,5 @@
 #include "cnc_library.h"
 
-/*** 0. Static Functions Declaration ***/
-static bool _cnc_terminal_set_raw_mode(cnc_terminal *t);
-static void _cnc_terminal_restore(cnc_terminal *t);
-
 // Signals
 
 // suspend flag
@@ -13,6 +9,14 @@ static void _handle_sigtstp(int sig) { suspend_flag = 1; }
 // resize flag
 volatile sig_atomic_t resize_flag = 0;
 static void _handle_resize(int sig) { resize_flag = 1; }
+
+/*** A. Static Functions Declaration ***/
+
+void _cnc_terminal_check_for_suspend(cnc_terminal *t);
+void _cnc_terminal_check_for_resize(cnc_terminal *t);
+
+static bool _cnc_terminal_set_raw_mode(cnc_terminal *t);
+static void _cnc_terminal_restore(cnc_terminal *t);
 
 // following function returns 1 for bg color and 2 for fg color
 // it ultimitely sets the color in char *color
@@ -42,6 +46,106 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r);
 // get user input
 static int _cnc_terminal_getch(cnc_terminal *t);
 static int _cnc_terminal_get_user_input(cnc_terminal *t);
+
+/*** B. Static Functions Definition ***/
+
+void _cnc_terminal_check_for_suspend(cnc_terminal *t)
+{
+  if (suspend_flag)
+  {
+    suspend_flag = 0;
+
+    _cnc_terminal_restore(t);
+
+    // Set default handler for SIGTSTP
+    signal(SIGTSTP, SIG_DFL);
+
+    // Send SIGTSTP to itself to suspend the process
+    raise(SIGTSTP);
+  }
+
+  else
+  {
+    if (t->in_raw_mode == false)
+    {
+      _cnc_terminal_set_raw_mode(t);
+      cnc_terminal_update_and_redraw(t);
+    }
+  }
+}
+
+void _cnc_terminal_check_for_resize(cnc_terminal *t)
+{
+  if (resize_flag)
+  {
+    resize_flag = 0;
+    if (!cnc_terminal_get_size(t))
+    {
+      return;
+    }
+
+    CLRSCR;
+    HOME_POSITION;
+
+    uint16_t new_rows = t->scr_rows;
+    uint16_t new_cols = t->scr_cols;
+
+    t->screen_buffer =
+        cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
+    cnc_terminal_screenbuffer_reset(t);
+    cnc_terminal_setup_widgets(t);
+    cnc_terminal_update_and_redraw(t);
+  }
+}
+
+static bool _cnc_terminal_set_raw_mode(cnc_terminal *t)
+{
+  CLRSCR;
+  HOME_POSITION;
+
+  // read the current terminal attributes and store them
+  if (tcgetattr(STDIN_FILENO, &t->orig_term) == -1)
+  {
+    return false;
+  }
+
+  // put the terminal in raw mode
+  struct termios raw_term = t->orig_term;
+
+  raw_term.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+  raw_term.c_oflag &= ~(OPOST);
+  raw_term.c_cflag |= (CS8);
+  raw_term.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+  raw_term.c_cc[VMIN]  = 0;
+  raw_term.c_cc[VTIME] = 1;
+
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_term) == -1)
+  {
+    return false;
+  }
+
+  t->in_raw_mode = true;
+
+  return true;
+}
+
+static void _cnc_terminal_restore(cnc_terminal *t)
+{
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &t->orig_term);
+  t->in_raw_mode = false;
+
+  // Restore cursor
+  CURSOR_INS;
+  SHOW_CURSOR;
+
+  // Restore color
+  write(STDOUT_FILENO, COLOR_DEFAULT, 5);
+
+  // Clear screen
+  CLRSCR;
+  HOME_POSITION;
+  fflush(stdout);
+}
 
 /*** 1. COLORS ***/
 static int _color_code_to_color(int color_code, char **color)
@@ -822,104 +926,6 @@ static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r)
   return (r - 1) * (t->scr_cols + 16) + c + 9;
 }
 
-void cnc_terminal_check_for_suspend(cnc_terminal *t)
-{
-  if (suspend_flag)
-  {
-    suspend_flag = 0;
-
-    _cnc_terminal_restore(t);
-
-    // Set default handler for SIGTSTP
-    signal(SIGTSTP, SIG_DFL);
-
-    // Send SIGTSTP to itself to suspend the process
-    raise(SIGTSTP);
-  }
-
-  else
-  {
-    if (t->in_raw_mode == false)
-    {
-      _cnc_terminal_set_raw_mode(t);
-      cnc_terminal_update_and_redraw(t);
-    }
-  }
-}
-
-void cnc_terminal_check_for_resize(cnc_terminal *t)
-{
-  if (resize_flag)
-  {
-    resize_flag = 0;
-    if (!cnc_terminal_get_size(t))
-    {
-      return;
-    }
-
-    CLRSCR;
-    HOME_POSITION;
-
-    uint16_t new_rows = t->scr_rows;
-    uint16_t new_cols = t->scr_cols;
-
-    t->screen_buffer =
-        cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
-    cnc_terminal_screenbuffer_reset(t);
-    cnc_terminal_setup_widgets(t);
-    cnc_terminal_update_and_redraw(t);
-  }
-}
-
-static bool _cnc_terminal_set_raw_mode(cnc_terminal *t)
-{
-  CLRSCR;
-  HOME_POSITION;
-
-  // read the current terminal attributes and store them
-  if (tcgetattr(STDIN_FILENO, &t->orig_term) == -1)
-  {
-    return false;
-  }
-
-  // put the terminal in raw mode
-  struct termios raw_term = t->orig_term;
-
-  raw_term.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-  raw_term.c_oflag &= ~(OPOST);
-  raw_term.c_cflag |= (CS8);
-  raw_term.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-  raw_term.c_cc[VMIN]  = 0;
-  raw_term.c_cc[VTIME] = 1;
-
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_term) == -1)
-  {
-    return false;
-  }
-
-  t->in_raw_mode = true;
-
-  return true;
-}
-
-static void _cnc_terminal_restore(cnc_terminal *t)
-{
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &t->orig_term);
-  t->in_raw_mode = false;
-
-  // Restore cursor
-  CURSOR_INS;
-  SHOW_CURSOR;
-
-  // Restore color
-  write(STDOUT_FILENO, COLOR_DEFAULT, 5);
-
-  // Clear screen
-  CLRSCR;
-  HOME_POSITION;
-  fflush(stdout);
-}
-
 cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 {
   cnc_terminal *t = (cnc_terminal *)malloc(sizeof(cnc_terminal));
@@ -945,7 +951,7 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
   t->sa_resize.sa_flags   = SA_RESTART;
   sigemptyset(&t->sa_resize.sa_mask);
 
-  if (sigaction(SIGTSTP, &t->sa_resize, NULL) == -1)
+  if (sigaction(SIGWINCH, &t->sa_resize, NULL) == -1)
   {
     cnc_terminal_destroy(t);
     return NULL;
@@ -1601,12 +1607,7 @@ static int _cnc_terminal_getch(cnc_terminal *t)
 
   ioctl(STDIN_FILENO, FIONREAD, &bytes_read);
 
-  if (bytes_read < 0)
-  {
-    return -1;
-  }
-
-  if (bytes_read == 0)
+  if (bytes_read <= 0)
   {
     return 0;
   }
@@ -1631,10 +1632,6 @@ static int _cnc_terminal_getch(cnc_terminal *t)
     ch_sum += ch;
   }
 
-  if (ch_sum == 0)
-  {
-  }
-
   return ch_sum;
 }
 
@@ -1645,11 +1642,12 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
 
   while (result == 0)
   {
-    // detect suspend command
-    cnc_terminal_check_for_suspend(t);
-
     // detect terminal resize
-    cnc_terminal_check_for_resize(t);
+    _cnc_terminal_check_for_resize(t);
+
+    // detect suspend command
+    _cnc_terminal_check_for_suspend(t);
+
     result = _cnc_terminal_getch(t);
     usleep(10000);
   }

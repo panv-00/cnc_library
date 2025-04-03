@@ -3,5 +3,5 @@ all:
 	gcc test_app.c cnc_library.o -o test_app
 
 clean:
-	rm *.o
-	rm test_app
+	rm -f *.o
+	rm -f test_app
