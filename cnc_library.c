@@ -36,7 +36,7 @@ static void _vim_mode_x(cnc_widget *w);
 // page_up | page_down
 static void _page_up(cnc_widget *w);
 static void _page_dn(cnc_widget *w);
-static void _insert_char(cnc_widget *w, char c);
+static void _insert_char(cnc_widget *w, unsigned char c);
 static void _delete_char(cnc_widget *w);
 
 // screen buffer index calculator
@@ -861,7 +861,7 @@ static void _page_dn(cnc_widget *w)
   }
 }
 
-static void _insert_char(cnc_widget *w, char c)
+static void _insert_char(cnc_widget *w, unsigned char c)
 {
   if (w && w->type == WIDGET_PROMPT)
   {
@@ -1620,7 +1620,56 @@ static int _cnc_terminal_getch(cnc_terminal *t)
 
   if (ch != KEY_ESCAPE)
   {
-    return ch;
+    // return ch;
+    unsigned char emoji_bytes[4];
+    int emoji_length = 1;
+
+    emoji_bytes[0] = ch;
+
+    if ((ch & 0xE0) == 0xC0)
+    {
+      emoji_length = 2;
+    }
+
+    else if ((ch & 0xF0) == 0xE0)
+    {
+      emoji_length = 3;
+    }
+
+    else if ((ch & 0xF8) == 0xF0)
+    {
+      emoji_length = 4;
+    }
+
+    else
+    {
+      return ch;
+    }
+
+    for (int i = 1; i < emoji_length; i++)
+    {
+      read(STDIN_FILENO, &ch, 1);
+
+      if ((ch & 0xC0) != 0x80)
+      {
+        return ch;
+      }
+
+      emoji_bytes[i] = ch;
+    }
+
+    switch (emoji_length)
+    {
+    case 2:
+      return (emoji_bytes[0] << 8) | emoji_bytes[1];
+    case 3:
+      return (emoji_bytes[0] << 16) | (emoji_bytes[1] << 8) | emoji_bytes[2];
+    case 4:
+      return (emoji_bytes[0] << 24) | (emoji_bytes[1] << 16) |
+             (emoji_bytes[2] << 8) | emoji_bytes[3];
+    default:
+      return ch;
+    }
   }
 
   ch_sum = ch;
@@ -1676,6 +1725,61 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
     {
       _insert_char(fw, result);
       return result;
+    }
+
+    // result is an emoji
+    {
+      unsigned char byte1 = (result >> 24) & 0xFF;
+      unsigned char byte2 = (result >> 16) & 0xFF;
+      unsigned char byte3 = (result >> 8) & 0xFF;
+      unsigned char byte4 = (result >> 0) & 0xFF;
+
+      // result is a 2-byte emoji
+      if (byte1 == 0 && byte2 == 0)
+      {
+        if ((byte3 & 0xE0) == 0xC0)
+        {
+          if (byte4 >= 0x80 && byte4 <= 0xBF)
+          {
+            _insert_char(fw, byte3);
+            _insert_char(fw, byte4);
+            _insert_char(fw, ' ');
+            return (byte3 << 8) | byte4;
+          }
+        }
+      }
+
+      // result is a 3-byte emoji
+      // if (byte1 >= 0xE0 && byte1 <= 0xEF)
+      if (byte1 == 0)
+      {
+        if ((byte2 & 0xF0) == 0xE0)
+        {
+          if (byte3 >= 0x80 && byte3 <= 0xBF && byte4 >= 0x80 && byte4 <= 0xBF)
+          {
+            _insert_char(fw, byte2);
+            _insert_char(fw, byte3);
+            _insert_char(fw, byte4);
+            _insert_char(fw, ' ');
+            return (byte2 << 16) | (byte3 << 8) | byte4;
+          }
+        }
+      }
+
+      // result is a 4-byte emoji
+      if ((byte1 & 0xF8) == 0xF0)
+      {
+        if (byte2 >= 0x80 && byte2 <= 0xBF && byte3 >= 0x80 && byte3 <= 0xBF &&
+            byte4 >= 0x80 && byte4 <= 0xBF)
+        {
+          _insert_char(fw, byte1);
+          _insert_char(fw, byte2);
+          _insert_char(fw, byte3);
+          _insert_char(fw, byte4);
+          _insert_char(fw, ' ');
+          return (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
+        }
+      }
     }
 
     // result is backspace

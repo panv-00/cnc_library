@@ -10,8 +10,8 @@ void free_all_allocations(cnc_terminal *term)
 
 int main(void)
 {
-  int user_input = 0;
-  bool end_app = false;
+  int user_input     = 0;
+  bool end_app       = false;
   cnc_terminal *term = cnc_terminal_init(TERM_MIN_WIDTH, TERM_MIN_HEIGHT);
 
   if (!term)
@@ -23,9 +23,9 @@ int main(void)
   }
 
   cnc_widget *titlebar = cnc_terminal_add_widget(term, WIDGET_INFO);
-  cnc_widget *display = cnc_terminal_add_widget(term, WIDGET_DISPLAY);
-  cnc_widget *prompt = cnc_terminal_add_widget(term, WIDGET_PROMPT);
-  cnc_widget *infobar = cnc_terminal_add_widget(term, WIDGET_INFO);
+  cnc_widget *display  = cnc_terminal_add_widget(term, WIDGET_DISPLAY);
+  cnc_widget *prompt   = cnc_terminal_add_widget(term, WIDGET_PROMPT);
+  cnc_widget *infobar  = cnc_terminal_add_widget(term, WIDGET_INFO);
 
   if (!titlebar || !display || !infobar || !prompt)
   {
@@ -52,6 +52,9 @@ int main(void)
   cnc_buffer_set_text(display->data, "Welcome to test_app version ");
   cnc_buffer_append(display->data, APP_VERSION);
   cnc_buffer_append(display->data, "\n");
+  cnc_buffer_append(display->data, "U0001F60A\n");
+  cnc_buffer_append(display->data, "\U0001F60A\n");
+  cnc_buffer_append(display->data, "U0001F60A\n");
   cnc_buffer_set_text(infobar->data, " ENTER 'q' TO QUIT ");
 
   cnc_terminal_update_and_redraw(term);
