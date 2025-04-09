@@ -182,6 +182,29 @@ void cnc_widget_destroy(cnc_widget *w);
 // Terminal Size Error
 #define TERM_TOO_SMALL -1
 
+// UTF-8
+// extract the first bits (prefix) for UTF-8 characters
+#define UTF8_PREFIX(byte, num_bytes)                                           \
+  (((byte) >> (8 - num_bytes)) << (8 - num_bytes))
+
+// concatenate UTF-8 into a single result
+// ugly, but compact approach
+#define CONCAT_UTF8_BYTES(utf8_len, utf8_bytes)                                \
+  ({                                                                           \
+    unsigned int result = 0;                                                   \
+    for (int i = 0; i < (utf8_len); ++i)                                       \
+    {                                                                          \
+      result |= (utf8_bytes[i] << ((utf8_len - i - 1) * 8));                   \
+    }                                                                          \
+    result;                                                                    \
+  })
+
+#define U_2B_P 0xC0 // UTF-8 2-byte prefix
+#define U_3B_P 0xE0 // UTF-8 3-byte prefix
+#define U_4B_P 0xF0 // UTF-8 4-byte prefix
+#define UCL    0x80 // UTF-8 continuation LOW  1000 0000
+#define UCU    0xBF // UTF-8 continuation HIGH 1011 1111
+
 // Position Cursor Function
 void POSCURSOR(size_t c, size_t r);
 

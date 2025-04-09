@@ -73,7 +73,10 @@ int main(void)
 
     else if (user_input == KEY_ENTER)
     {
-      cnc_buffer_set_text(display->data, prompt->data->contents);
+      cnc_buffer_set_text(display->data, "'");
+      cnc_buffer_append(display->data, prompt->data->contents);
+      cnc_buffer_append(display->data, "'\n");
+      cnc_buffer_append(display->data, " 012345678901234567890");
       cnc_widget_reset(prompt);
     }
 

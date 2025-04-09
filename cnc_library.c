@@ -22,6 +22,12 @@ static void _cnc_terminal_restore(cnc_terminal *t);
 // this function will return 0 when resetting colors
 static int _color_code_to_color(int color_code, char **color);
 
+// UTF-8 logical test
+static bool _is_utf8_2b(unsigned char b1, unsigned char b2);
+static bool _is_utf8_3b(unsigned char b1, unsigned char b2, unsigned char b3);
+static bool _is_utf8_4b(unsigned char b1, unsigned char b2, unsigned char b3,
+                        unsigned char b4);
+
 // Vim-Like functions
 static void _vim_mode_k(cnc_widget *w);
 static void _vim_mode_j(cnc_widget *w);
@@ -679,6 +685,40 @@ void POSCURSOR(size_t c, size_t r)
   write(STDOUT_FILENO, buf, len);
 }
 
+// UTF-8 logical test
+static bool _is_utf8_2b(unsigned char b1, unsigned char b2)
+{
+  if (((UTF8_PREFIX(b1, 3)) == U_2B_P) && (b2 >= UCL && b2 <= UCU))
+  {
+    return true;
+  }
+
+  return false;
+}
+
+static bool _is_utf8_3b(unsigned char b1, unsigned char b2, unsigned char b3)
+{
+  if (((UTF8_PREFIX(b1, 4)) == U_3B_P) && (b2 >= UCL && b2 <= UCU) &&
+      (b3 >= UCL && b3 <= UCU))
+  {
+    return true;
+  }
+
+  return false;
+}
+
+static bool _is_utf8_4b(unsigned char b1, unsigned char b2, unsigned char b3,
+                        unsigned char b4)
+{
+  if (((UTF8_PREFIX(b1, 5)) == U_4B_P) && (b2 >= UCL && b2 <= UCU) &&
+      (b3 >= UCL && b3 <= UCU) && (b4 >= UCL && b4 <= UCU))
+  {
+    return true;
+  }
+
+  return false;
+}
+
 // Vim-Like functions
 static void _vim_mode_k(cnc_widget *w)
 {
@@ -701,7 +741,48 @@ static void _vim_mode_l(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT && w->data_index < w->data->length)
   {
-    w->data_index++;
+    int data_index_shift = 1;
+
+    // 2-Byte utf
+    if (w->data_index + 2 < w->data->length)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index + 0];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index + 1];
+
+      if (_is_utf8_2b(b1, b2))
+      {
+        data_index_shift = 2;
+      }
+    }
+
+    // 3-Byte utf
+    if (w->data_index + 3 < w->data->length)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index + 0];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index + 1];
+      unsigned char b3 = (unsigned char)w->data->contents[w->data_index + 2];
+
+      if (_is_utf8_3b(b1, b2, b3))
+      {
+        data_index_shift = 3;
+      }
+    }
+
+    // 4-Byte utf
+    if (w->data_index + 4 < w->data->length)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index + 0];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index + 1];
+      unsigned char b3 = (unsigned char)w->data->contents[w->data_index + 2];
+      unsigned char b4 = (unsigned char)w->data->contents[w->data_index + 3];
+
+      if (_is_utf8_4b(b1, b2, b3, b4))
+      {
+        data_index_shift = 4;
+      }
+    }
+
+    w->data_index += data_index_shift;
 
     if (w->data_index - w->index > w->frame.width - 3)
     {
@@ -714,7 +795,48 @@ static void _vim_mode_h(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT && w->data_index > 0)
   {
-    w->data_index--;
+    int data_index_shift = 1;
+
+    // 2-Byte utf
+    if (w->data_index >= 2)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index - 2];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index - 1];
+
+      if (_is_utf8_2b(b1, b2))
+      {
+        data_index_shift = 2;
+      }
+    }
+
+    // 3-Byte utf
+    if (w->data_index >= 3)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index - 3];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index - 2];
+      unsigned char b3 = (unsigned char)w->data->contents[w->data_index - 1];
+
+      if (_is_utf8_3b(b1, b2, b3))
+      {
+        data_index_shift = 3;
+      }
+    }
+
+    // 4-Byte utf
+    if (w->data_index >= 4)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index - 4];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index - 3];
+      unsigned char b3 = (unsigned char)w->data->contents[w->data_index - 2];
+      unsigned char b4 = (unsigned char)w->data->contents[w->data_index - 1];
+
+      if (_is_utf8_4b(b1, b2, b3, b4))
+      {
+        data_index_shift = 4;
+      }
+    }
+
+    w->data_index -= data_index_shift;
 
     if (w->index > 0 && w->data_index - w->index < w->frame.width - 6)
     {
@@ -823,7 +945,52 @@ static void _vim_mode_x(cnc_widget *w)
 {
   if (w && w->type == WIDGET_PROMPT && w->data_index < w->data->length)
   {
-    cnc_buffer_delete_char(w->data, w->data_index);
+
+    int num_of_chars = 1;
+
+    // 2-Byte utf
+    if (w->data_index + 1 < w->data->length)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index + 0];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index + 1];
+
+      if (_is_utf8_2b(b1, b2))
+      {
+        num_of_chars = 2;
+      }
+    }
+
+    // 3-Byte utf
+    if (w->data_index + 2 < w->data->length)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index + 0];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index + 1];
+      unsigned char b3 = (unsigned char)w->data->contents[w->data_index + 2];
+
+      if (_is_utf8_3b(b1, b2, b3))
+      {
+        num_of_chars = 3;
+      }
+    }
+
+    // 4-Byte utf
+    if (w->data_index + 3 < w->data->length)
+    {
+      unsigned char b1 = (unsigned char)w->data->contents[w->data_index + 0];
+      unsigned char b2 = (unsigned char)w->data->contents[w->data_index + 1];
+      unsigned char b3 = (unsigned char)w->data->contents[w->data_index + 2];
+      unsigned char b4 = (unsigned char)w->data->contents[w->data_index + 3];
+
+      if (_is_utf8_4b(b1, b2, b3, b4))
+      {
+        num_of_chars = 4;
+      }
+    }
+
+    for (int i = 0; i < num_of_chars; i++)
+    {
+      cnc_buffer_delete_char(w->data, w->data_index);
+    }
   }
 }
 
@@ -883,13 +1050,58 @@ static void _delete_char(cnc_widget *w)
   {
     if (w->data_index > 0)
     {
-      if (cnc_buffer_delete_char(w->data, w->data_index - 1))
-      {
-        w->data_index--;
 
-        if (w->index > 0)
+      int num_of_chars = 1;
+
+      // 2-Byte utf
+      if (w->data_index >= 2)
+      {
+        unsigned char b1 = (unsigned char)w->data->contents[w->data_index - 2];
+        unsigned char b2 = (unsigned char)w->data->contents[w->data_index - 1];
+
+        if (_is_utf8_2b(b1, b2))
         {
-          w->index--;
+          num_of_chars = 2;
+        }
+      }
+
+      // 3-Byte utf
+      if (w->data_index >= 3)
+      {
+        unsigned char b1 = (unsigned char)w->data->contents[w->data_index - 3];
+        unsigned char b2 = (unsigned char)w->data->contents[w->data_index - 2];
+        unsigned char b3 = (unsigned char)w->data->contents[w->data_index - 1];
+
+        if (_is_utf8_3b(b1, b2, b3))
+        {
+          num_of_chars = 3;
+        }
+      }
+
+      // 4-Byte utf
+      if (w->data_index >= 4)
+      {
+        unsigned char b1 = (unsigned char)w->data->contents[w->data_index - 4];
+        unsigned char b2 = (unsigned char)w->data->contents[w->data_index - 3];
+        unsigned char b3 = (unsigned char)w->data->contents[w->data_index - 2];
+        unsigned char b4 = (unsigned char)w->data->contents[w->data_index - 1];
+
+        if (_is_utf8_4b(b1, b2, b3, b4))
+        {
+          num_of_chars = 4;
+        }
+      }
+
+      for (int i = 0; i < num_of_chars; i++)
+      {
+        if (cnc_buffer_delete_char(w->data, w->data_index - 1))
+        {
+          w->data_index--;
+
+          if (w->index > 0)
+          {
+            w->index--;
+          }
         }
       }
     }
@@ -1287,7 +1499,29 @@ void cnc_terminal_redraw(cnc_terminal *t)
 
   if (w && w->type == WIDGET_PROMPT)
   {
-    t->cursor_col = w->data_index - w->index + 3;
+    // Check how many utf-8 chars are within the prompt displayed portion
+    int number_of_utf8 = 0;
+
+    for (size_t i = w->index; i < w->data_index; i++)
+    {
+      if ((UTF8_PREFIX((unsigned char)w->data->contents[i], 3)) == U_2B_P)
+      {
+        number_of_utf8 += 1;
+      }
+
+      else if ((UTF8_PREFIX((unsigned char)w->data->contents[i], 4)) == U_3B_P)
+      {
+        number_of_utf8 += 2;
+      }
+
+      else if ((UTF8_PREFIX((unsigned char)w->data->contents[i], 5)) == U_4B_P)
+      {
+        number_of_utf8 += 2;
+      }
+    }
+
+    t->cursor_col = w->data_index - w->index + 3 - number_of_utf8;
+
     t->cursor_row = w->frame.origin.row + 1;
     POSCURSOR(t->cursor_col, t->cursor_row);
     SHOW_CURSOR;
@@ -1601,7 +1835,7 @@ void cnc_terminal_set_row_bg(cnc_terminal *t, size_t row, const char *color)
 static int _cnc_terminal_getch(cnc_terminal *t)
 {
   int bytes_read;
-  char ch;
+  unsigned char ch;
   int ch_sum = 0;
 
   ioctl(STDIN_FILENO, FIONREAD, &bytes_read);
@@ -1620,25 +1854,24 @@ static int _cnc_terminal_getch(cnc_terminal *t)
 
   if (ch != KEY_ESCAPE)
   {
-    // return ch;
-    unsigned char emoji_bytes[4];
-    int emoji_length = 1;
+    unsigned char utf8_bytes[4];
+    int utf8_len = 1;
 
-    emoji_bytes[0] = ch;
+    utf8_bytes[0] = ch;
 
-    if ((ch & 0xE0) == 0xC0)
+    if ((UTF8_PREFIX(ch, 3)) == U_2B_P)
     {
-      emoji_length = 2;
+      utf8_len = 2;
     }
 
-    else if ((ch & 0xF0) == 0xE0)
+    else if ((UTF8_PREFIX(ch, 4)) == U_3B_P)
     {
-      emoji_length = 3;
+      utf8_len = 3;
     }
 
-    else if ((ch & 0xF8) == 0xF0)
+    else if ((UTF8_PREFIX(ch, 5)) == U_4B_P)
     {
-      emoji_length = 4;
+      utf8_len = 4;
     }
 
     else
@@ -1646,30 +1879,19 @@ static int _cnc_terminal_getch(cnc_terminal *t)
       return ch;
     }
 
-    for (int i = 1; i < emoji_length; i++)
+    for (int i = 1; i < utf8_len; i++)
     {
       read(STDIN_FILENO, &ch, 1);
 
-      if ((ch & 0xC0) != 0x80)
+      if ((UTF8_PREFIX(ch, 2)) != UCL)
       {
         return ch;
       }
 
-      emoji_bytes[i] = ch;
+      utf8_bytes[i] = ch;
     }
 
-    switch (emoji_length)
-    {
-    case 2:
-      return (emoji_bytes[0] << 8) | emoji_bytes[1];
-    case 3:
-      return (emoji_bytes[0] << 16) | (emoji_bytes[1] << 8) | emoji_bytes[2];
-    case 4:
-      return (emoji_bytes[0] << 24) | (emoji_bytes[1] << 16) |
-             (emoji_bytes[2] << 8) | emoji_bytes[3];
-    default:
-      return ch;
-    }
+    return CONCAT_UTF8_BYTES(utf8_len, utf8_bytes);
   }
 
   ch_sum = ch;
@@ -1727,58 +1949,51 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
       return result;
     }
 
-    // result is an emoji
+    // handle UTF-8
     {
       unsigned char byte1 = (result >> 24) & 0xFF;
       unsigned char byte2 = (result >> 16) & 0xFF;
       unsigned char byte3 = (result >> 8) & 0xFF;
       unsigned char byte4 = (result >> 0) & 0xFF;
 
-      // result is a 2-byte emoji
+      // result is a 2-byte utf-8
       if (byte1 == 0 && byte2 == 0)
       {
-        if ((byte3 & 0xE0) == 0xC0)
+        if (_is_utf8_2b(byte3, byte4))
         {
-          if (byte4 >= 0x80 && byte4 <= 0xBF)
-          {
-            _insert_char(fw, byte3);
-            _insert_char(fw, byte4);
-            _insert_char(fw, ' ');
-            return (byte3 << 8) | byte4;
-          }
+          _insert_char(fw, byte3);
+          _insert_char(fw, byte4);
+
+          // return (byte3 << 8) | byte4;
+          return U_2B_P;
         }
       }
 
-      // result is a 3-byte emoji
+      // result is a 3-byte utf-8
       // if (byte1 >= 0xE0 && byte1 <= 0xEF)
       if (byte1 == 0)
       {
-        if ((byte2 & 0xF0) == 0xE0)
+        if (_is_utf8_3b(byte2, byte3, byte4))
         {
-          if (byte3 >= 0x80 && byte3 <= 0xBF && byte4 >= 0x80 && byte4 <= 0xBF)
-          {
-            _insert_char(fw, byte2);
-            _insert_char(fw, byte3);
-            _insert_char(fw, byte4);
-            _insert_char(fw, ' ');
-            return (byte2 << 16) | (byte3 << 8) | byte4;
-          }
-        }
-      }
-
-      // result is a 4-byte emoji
-      if ((byte1 & 0xF8) == 0xF0)
-      {
-        if (byte2 >= 0x80 && byte2 <= 0xBF && byte3 >= 0x80 && byte3 <= 0xBF &&
-            byte4 >= 0x80 && byte4 <= 0xBF)
-        {
-          _insert_char(fw, byte1);
           _insert_char(fw, byte2);
           _insert_char(fw, byte3);
           _insert_char(fw, byte4);
-          _insert_char(fw, ' ');
-          return (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
+
+          // return (byte2 << 16) | (byte3 << 8) | byte4;
+          return U_3B_P;
         }
+      }
+
+      // result is a 4-byte utf-8
+      if (_is_utf8_4b(byte1, byte2, byte3, byte4))
+      {
+        _insert_char(fw, byte1);
+        _insert_char(fw, byte2);
+        _insert_char(fw, byte3);
+        _insert_char(fw, byte4);
+
+        // return (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
+        return U_4B_P;
       }
     }
 
@@ -1846,7 +2061,57 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
 
     if (fw && fw->type == WIDGET_PROMPT && fw->data_index < fw->data->length)
     {
-      fw->data_index++;
+      int data_index_shift = 1;
+
+      // 2-Byte utf
+      if (fw->data_index + 2 < fw->data->length)
+      {
+        unsigned char b1 =
+            (unsigned char)fw->data->contents[fw->data_index + 0];
+        unsigned char b2 =
+            (unsigned char)fw->data->contents[fw->data_index + 1];
+
+        if (_is_utf8_2b(b1, b2))
+        {
+          data_index_shift = 2;
+        }
+      }
+
+      // 3-Byte utf
+      if (fw->data_index + 3 < fw->data->length)
+      {
+        unsigned char b1 =
+            (unsigned char)fw->data->contents[fw->data_index + 0];
+        unsigned char b2 =
+            (unsigned char)fw->data->contents[fw->data_index + 1];
+        unsigned char b3 =
+            (unsigned char)fw->data->contents[fw->data_index + 2];
+
+        if (_is_utf8_3b(b1, b2, b3))
+        {
+          data_index_shift = 3;
+        }
+      }
+
+      // 4-Byte utf
+      if (fw->data_index + 4 < fw->data->length)
+      {
+        unsigned char b1 =
+            (unsigned char)fw->data->contents[fw->data_index + 0];
+        unsigned char b2 =
+            (unsigned char)fw->data->contents[fw->data_index + 1];
+        unsigned char b3 =
+            (unsigned char)fw->data->contents[fw->data_index + 2];
+        unsigned char b4 =
+            (unsigned char)fw->data->contents[fw->data_index + 3];
+
+        if (_is_utf8_4b(b1, b2, b3, b4))
+        {
+          data_index_shift = 4;
+        }
+      }
+
+      fw->data_index += data_index_shift;
     }
 
     return result;
