@@ -4,11 +4,17 @@
 
 // suspend flag
 volatile sig_atomic_t suspend_flag = 0;
-static void _handle_sigtstp(int sig) { suspend_flag = 1; }
+static void _handle_sigtstp(int sig)
+{
+  suspend_flag = 1;
+}
 
 // resize flag
 volatile sig_atomic_t resize_flag = 0;
-static void _handle_resize(int sig) { resize_flag = 1; }
+static void _handle_resize(int sig)
+{
+  resize_flag = 1;
+}
 
 /*** A. Static Functions Declaration ***/
 
@@ -42,6 +48,9 @@ static void _delete_char(cnc_widget *w);
 // screen buffer index calculator
 static size_t _index_at_cr(cnc_terminal *t, size_t c, size_t r);
 
+// redraw the terminal
+static void _cnc_terminal_redraw(cnc_terminal *t);
+
 // get user input
 static int _cnc_terminal_getch(cnc_terminal *t);
 static int _cnc_terminal_get_user_input(cnc_terminal *t);
@@ -68,7 +77,7 @@ static void _cnc_terminal_check_for_suspend(cnc_terminal *t)
     if (t->in_raw_mode == false)
     {
       _cnc_terminal_set_raw_mode(t);
-      cnc_terminal_update_and_redraw(t);
+      cnc_terminal_update(t);
     }
   }
 }
@@ -127,72 +136,24 @@ static int _color_code_to_color(int color_code, char **color)
 {
   switch (color_code)
   {
-  case COLOR_CODE_BLACK_FG:
-    *color = COLOR_BLACK_FG;
-    return 2;
+    case COLOR_CODE_BLACK_FG: *color = COLOR_BLACK_FG; return 2;
+    case COLOR_CODE_RED_FG: *color = COLOR_RED_FG; return 2;
+    case COLOR_CODE_GREEN_FG: *color = COLOR_GREEN_FG; return 2;
+    case COLOR_CODE_YELLOW_FG: *color = COLOR_YELLOW_FG; return 2;
+    case COLOR_CODE_BLUE_FG: *color = COLOR_BLUE_FG; return 2;
+    case COLOR_CODE_MAGENTA_FG: *color = COLOR_MAGENTA_FG; return 2;
+    case COLOR_CODE_CYAN_FG: *color = COLOR_CYAN_FG; return 2;
+    case COLOR_CODE_WHITE_FG: *color = COLOR_WHITE_FG; return 2;
+    case COLOR_CODE_BLACK_BG: *color = COLOR_BLACK_BG; return 1;
+    case COLOR_CODE_RED_BG: *color = COLOR_RED_BG; return 1;
+    case COLOR_CODE_GREEN_BG: *color = COLOR_GREEN_BG; return 1;
+    case COLOR_CODE_YELLOW_BG: *color = COLOR_YELLOW_BG; return 1;
+    case COLOR_CODE_BLUE_BG: *color = COLOR_BLUE_BG; return 1;
+    case COLOR_CODE_MAGENTA_BG: *color = COLOR_MAGENTA_BG; return 1;
+    case COLOR_CODE_CYAN_BG: *color = COLOR_CYAN_BG; return 1;
+    case COLOR_CODE_WHITE_BG: *color = COLOR_WHITE_BG; return 1;
 
-  case COLOR_CODE_RED_FG:
-    *color = COLOR_RED_FG;
-    return 2;
-
-  case COLOR_CODE_GREEN_FG:
-    *color = COLOR_GREEN_FG;
-    return 2;
-
-  case COLOR_CODE_YELLOW_FG:
-    *color = COLOR_YELLOW_FG;
-    return 2;
-
-  case COLOR_CODE_BLUE_FG:
-    *color = COLOR_BLUE_FG;
-    return 2;
-
-  case COLOR_CODE_MAGENTA_FG:
-    *color = COLOR_MAGENTA_FG;
-    return 2;
-
-  case COLOR_CODE_CYAN_FG:
-    *color = COLOR_CYAN_FG;
-    return 2;
-
-  case COLOR_CODE_WHITE_FG:
-    *color = COLOR_WHITE_FG;
-    return 2;
-
-  case COLOR_CODE_BLACK_BG:
-    *color = COLOR_BLACK_BG;
-    return 1;
-
-  case COLOR_CODE_RED_BG:
-    *color = COLOR_RED_BG;
-    return 1;
-
-  case COLOR_CODE_GREEN_BG:
-    *color = COLOR_GREEN_BG;
-    return 1;
-
-  case COLOR_CODE_YELLOW_BG:
-    *color = COLOR_YELLOW_BG;
-    return 1;
-
-  case COLOR_CODE_BLUE_BG:
-    *color = COLOR_BLUE_BG;
-    return 1;
-
-  case COLOR_CODE_MAGENTA_BG:
-    *color = COLOR_MAGENTA_BG;
-    return 1;
-
-  case COLOR_CODE_CYAN_BG:
-    *color = COLOR_CYAN_BG;
-    return 1;
-
-  case COLOR_CODE_WHITE_BG:
-    *color = COLOR_WHITE_BG;
-    return 1;
-
-  default:
-    return 0;
+    default: return 0;
   }
 }
 
@@ -615,23 +576,23 @@ cnc_widget *cnc_widget_init(cnc_widget_type type)
 
   switch (type)
   {
-  case WIDGET_INFO:
-    buffer_size   = INFO_BUFFER_SIZE;
-    w->background = COLOR_GREEN_BG;
-    w->foreground = COLOR_BLACK_FG;
-    w->can_focus  = false;
-    break;
+    case WIDGET_INFO:
+      buffer_size   = INFO_BUFFER_SIZE;
+      w->background = COLOR_GREEN_BG;
+      w->foreground = COLOR_BLACK_FG;
+      w->can_focus  = false;
+      break;
 
-  case WIDGET_PROMPT:
-    buffer_size   = PROMPT_BUFFER_SIZE;
-    w->foreground = COLOR_CYAN_FG;
-    w->can_focus  = true;
-    break;
+    case WIDGET_PROMPT:
+      buffer_size   = PROMPT_BUFFER_SIZE;
+      w->foreground = COLOR_CYAN_FG;
+      w->can_focus  = true;
+      break;
 
-  case WIDGET_DISPLAY:
-    buffer_size  = DISPLAY_BUFFER_SIZE;
-    w->can_focus = true;
-    break;
+    case WIDGET_DISPLAY:
+      buffer_size  = DISPLAY_BUFFER_SIZE;
+      w->can_focus = true;
+      break;
   }
 
   w->data = cnc_buffer_init(buffer_size);
@@ -647,7 +608,7 @@ cnc_widget *cnc_widget_init(cnc_widget_type type)
 
 void cnc_widget_reset(cnc_widget *w)
 {
-  cnc_buffer_set_text(w->data, "");
+  cnc_buffer_clear(w->data);
   w->data_index = 0;
   w->index      = 0;
 }
@@ -921,7 +882,7 @@ void cnc_terminal_check_for_resize(cnc_terminal *t)
         cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
     cnc_terminal_screenbuffer_reset(t);
     cnc_terminal_setup_widgets(t);
-    cnc_terminal_update_and_redraw(t);
+    cnc_terminal_update(t);
   }
 }
 
@@ -1021,7 +982,7 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 
   // empty the buffer and redraw (clear the screen)
   cnc_terminal_screenbuffer_reset(t);
-  cnc_terminal_redraw(t);
+  _cnc_terminal_redraw(t);
 
   return t;
 }
@@ -1116,14 +1077,10 @@ bool cnc_terminal_setup_widgets(cnc_terminal *t)
   {
     switch (t->widgets[i]->type)
     {
-    case WIDGET_INFO:
-    case WIDGET_PROMPT:
-      tlw++;
-      break;
+      case WIDGET_INFO:
+      case WIDGET_PROMPT: tlw++; break;
 
-    case WIDGET_DISPLAY:
-      mlw++;
-      break;
+      case WIDGET_DISPLAY: mlw++; break;
     }
   }
 
@@ -1166,9 +1123,9 @@ bool cnc_terminal_setup_widgets(cnc_terminal *t)
 
 void cnc_terminal_screenbuffer_reset_char(cnc_terminal *t, char c)
 {
-  size_t sb_i = 0; // screen_buffer index
+  size_t sb_i; // screen_buffer index
 
-  cnc_buffer_set_text(t->screen_buffer, "");
+  cnc_buffer_clear(t->screen_buffer);
 
   for (size_t i = 0; i < t->scr_rows; i++)
   {
@@ -1178,21 +1135,18 @@ void cnc_terminal_screenbuffer_reset_char(cnc_terminal *t, char c)
     //  - total cols    : t->scr_cols
     //  - color reset   : 4
     //  - '\n\r'        : 2
-    cnc_buffer_insert_text(t->screen_buffer, sb_i, 5, COLOR_NONE);
-    cnc_buffer_insert_text(t->screen_buffer, sb_i + 5, 5, COLOR_NONE);
-    cnc_buffer_insert_char(t->screen_buffer, sb_i + 10, t->scr_cols, c);
-    cnc_buffer_insert_text(t->screen_buffer, sb_i + 10 + t->scr_cols, 4,
+    sb_i = _index_at_cr(t, 1, i + 1);
+    cnc_buffer_insert_text(t->screen_buffer, sb_i - 10, 5, COLOR_NONE);
+    cnc_buffer_insert_text(t->screen_buffer, sb_i - 5, 5, COLOR_NONE);
+    cnc_buffer_insert_char(t->screen_buffer, sb_i, t->scr_cols, c);
+    cnc_buffer_insert_text(t->screen_buffer, sb_i + t->scr_cols, 4,
                            COLOR_DEFAULT);
 
     if (i != t->scr_rows - 1)
     {
-      cnc_buffer_insert_char(t->screen_buffer, sb_i + 14 + t->scr_cols, 1,
-                             '\n');
-      cnc_buffer_insert_char(t->screen_buffer, sb_i + 15 + t->scr_cols, 1,
-                             '\r');
+      cnc_buffer_insert_char(t->screen_buffer, sb_i + 4 + t->scr_cols, 1, '\n');
+      cnc_buffer_insert_char(t->screen_buffer, sb_i + 5 + t->scr_cols, 1, '\r');
     }
-
-    sb_i = sb_i + 16 + t->scr_cols;
   }
 }
 
@@ -1264,7 +1218,7 @@ void cnc_terminal_focus_next(cnc_terminal *t)
   }
 }
 
-void cnc_terminal_redraw(cnc_terminal *t)
+static void _cnc_terminal_redraw(cnc_terminal *t)
 {
   HIDE_CURSOR;
   HOME_POSITION;
@@ -1296,7 +1250,7 @@ void cnc_terminal_redraw(cnc_terminal *t)
   fflush(stdout);
 }
 
-void cnc_terminal_update_screen_buffer(cnc_terminal *t)
+void cnc_terminal_update(cnc_terminal *t)
 {
   cnc_widget *w   = NULL;
   size_t sb_index = 0;
@@ -1311,277 +1265,268 @@ void cnc_terminal_update_screen_buffer(cnc_terminal *t)
 
     switch (w->type)
     {
-    case WIDGET_INFO:
-    {
-      row++;
-      cnc_buffer_replace(w->data, '\n', ' ');
-      cnc_buffer_replace(w->data, '\r', USC);
-      sb_index = _index_at_cr(t, col, row);
-
-      cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, w->background,
-                              0);
-
-      cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, w->foreground,
-                              0);
-
-      cnc_buffer_replace_text(t->screen_buffer, sb_index, w->frame.width,
-                              w->data->contents, w->index);
-
-      // fill the line with spaces to overwrite old chars
-      cnc_buffer_replace_char(t->screen_buffer, sb_index + w->data->length,
-                              w->frame.width - w->data->length, ' ');
-    }
-    break;
-
-    case WIDGET_PROMPT:
-    {
-      row++;
-      sb_index = _index_at_cr(t, col, row);
-
-      cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, w->foreground,
-                              0);
-
-      cnc_buffer_replace_text(
-          t->screen_buffer, sb_index, 2,
-          w->has_focus ? (t->mode == MODE_INS ? PROMPT_INS : PROMPT_CMD)
-                       : PROMPT_NUL,
-          0);
-
-      cnc_buffer_replace_text(t->screen_buffer, sb_index + 2,
-                              w->frame.width - 3, w->data->contents, w->index);
-
-      // fill the line with spaces to overwrite old chars
-      cnc_buffer_replace_char(t->screen_buffer, sb_index + w->data->length + 2,
-                              w->frame.width - 2 - w->data->length, ' ');
-    }
-    break;
-
-    case WIDGET_DISPLAY:
-    {
-      // split long stream into lines, without breaking words
-      // an improtant option we have to consider is when the
-      // user sends bf and fg information within the buffer.
-      // in this case, those info will be ignored in the
-      // char array, and added at the beginning of the line.
-      // the only way to achieve this is to pick a color_info_byte
-      // that will tell us that fg and bg info will follow.
-      // this color_info_byte then will be ignored
-
-      char *bg            = COLOR_NONE;
-      char *fg            = COLOR_NONE;
-      char *tmp_color     = COLOR_NONE;
-      int color_operation = 0;
-
-      size_t last_space_index = 0;
-      size_t start_at_index   = 0;
-      size_t length           = 0;
-      size_t skip_rows        = 0;
-
-      // flag to add newline if last character is not a newline
-      bool add_new_line = (w->data->contents[w->data->length - 1] != '\n');
-
-      // save number of rows in data_index
-      w->data_index = 0;
-
-      // add newline an the end of the buffer
-      // needed for lines calculation
-      if (add_new_line)
+      case WIDGET_INFO:
       {
-        cnc_buffer_append(w->data, "\n");
-      }
-
-      // dry run to calculate the number of rows
-      for (size_t i = 0; i < w->data->length; i++)
-      {
-        // do not account for color_info_byte
-        if (w->data->contents[i] == COLOR_INFO_BYTE)
-        {
-          start_at_index += 2;
-          i++;
-          continue;
-        }
-
-        if (w->data->contents[i] == '\n' ||
-            i - start_at_index >= w->frame.width)
-        {
-          w->data_index++;
-
-          if (w->data->contents[i] == '\n')
-          {
-            length = i - start_at_index;
-          }
-
-          else if (start_at_index >= last_space_index)
-          {
-            length = i - start_at_index;
-          }
-
-          else
-          {
-            length = last_space_index - start_at_index;
-          }
-
-          row++;
-          start_at_index += length;
-
-          if (w->data->contents[i] == '\n')
-          {
-            start_at_index++;
-          }
-        }
-
-        if (w->data->contents[i] == ' ')
-        {
-          last_space_index = i + 1;
-        }
-      }
-
-      if (w->data_index > w->frame.height)
-      {
-        skip_rows = w->data_index - w->frame.height;
-      }
-
-      // Actual writing of data
-      last_space_index = 0;
-      start_at_index   = 0;
-      length           = 0;
-
-      // reset data_index
-      w->data_index = 0;
-
-      // reset row index
-      row = w->frame.origin.row;
-
-      for (size_t i = 0; i < w->data->length; i++)
-      {
-        // do not account for color_info_byte
-        if (w->data->contents[i] == COLOR_INFO_BYTE)
-        {
-          color_operation =
-              _color_code_to_color(w->data->contents[i + 1], &tmp_color);
-
-          switch (color_operation)
-          {
-          case 0:
-            bg = COLOR_NONE;
-            fg = COLOR_NONE;
-            break;
-          case 1:
-            bg = tmp_color;
-            break;
-          case 2:
-            fg = tmp_color;
-            break;
-
-          default:
-            break;
-          }
-
-          start_at_index += 2;
-          i++;
-          continue;
-        }
-
-        if (w->data->contents[i] == '\n' ||
-            i - start_at_index >= w->frame.width)
-        {
-          w->data_index++;
-
-          if (w->data->contents[i] == '\n')
-          {
-            length = i - start_at_index;
-          }
-
-          else if (start_at_index >= last_space_index)
-          {
-            length = i - start_at_index;
-          }
-
-          else
-          {
-            length = last_space_index - start_at_index;
-          }
-
-          if (row < w->frame.origin.row + w->frame.height &&
-              w->data_index + w->index > skip_rows)
-          {
-            sb_index = _index_at_cr(t, col, row);
-
-            // fill color data
-            cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, bg, 0);
-            cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, fg, 0);
-            // write chars to line
-            cnc_buffer_replace_text(t->screen_buffer, sb_index, length,
-                                    w->data->contents, start_at_index);
-
-            // fill the line with spaces to overwrite old chars
-            cnc_buffer_replace_char(t->screen_buffer, sb_index + length,
-                                    w->frame.width - length, ' ');
-
-            row++;
-          }
-
-          start_at_index += length;
-
-          if (w->data->contents[i] == '\n')
-          {
-            start_at_index++;
-          }
-        }
-
-        if (w->data->contents[i] == ' ')
-        {
-          last_space_index = i + 1;
-        }
-      }
-
-      // write any remaining chars to the last line.
-      if (start_at_index < w->data->length)
-      {
+        row++;
+        cnc_buffer_replace(w->data, '\n', ' ');
+        cnc_buffer_replace(w->data, '\r', USC);
         sb_index = _index_at_cr(t, col, row);
 
-        // fill color data
-        cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, bg, 0);
-        cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, fg, 0);
+        cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5,
+                                w->background, 0);
 
-        // write chars to line
-        cnc_buffer_replace_text(t->screen_buffer, sb_index,
-                                w->data->length - start_at_index,
-                                w->data->contents, start_at_index);
+        cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5,
+                                w->foreground, 0);
 
         // fill the line with spaces to overwrite old chars
-        cnc_buffer_replace_char(
-            t->screen_buffer, sb_index + w->data->length - start_at_index,
-            w->frame.width - w->data->length + start_at_index, ' ');
-      }
-
-      // overwrite any old chars in the display
-      for (size_t row_index = row; row_index <= w->frame.height; row_index++)
-      {
-        sb_index = _index_at_cr(t, col, row_index);
         cnc_buffer_replace_char(t->screen_buffer, sb_index, w->frame.width,
                                 ' ');
-      }
 
-      // remove the newline from the end of the buffer
-      // this was added for lines calculation
-      if (add_new_line)
-      {
-        cnc_buffer_delete_char(w->data, w->data->length - 1);
+        cnc_buffer_replace_text(t->screen_buffer, sb_index, w->frame.width,
+                                w->data->contents, w->index);
       }
-    }
-    break;
-
-    default:
       break;
+
+      case WIDGET_PROMPT:
+      {
+        row++;
+        sb_index = _index_at_cr(t, col, row);
+
+        cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5,
+                                w->foreground, 0);
+
+        cnc_buffer_replace_text(
+            t->screen_buffer, sb_index, 2,
+            w->has_focus ? (t->mode == MODE_INS ? PROMPT_INS : PROMPT_CMD)
+                         : PROMPT_NUL,
+            0);
+
+        // fill the line with spaces to overwrite old chars
+        cnc_buffer_replace_char(t->screen_buffer, sb_index + 2,
+                                w->frame.width - 3, ' ');
+
+        cnc_buffer_replace_text(t->screen_buffer, sb_index + 2,
+                                w->frame.width - 3, w->data->contents,
+                                w->index);
+      }
+      break;
+
+      case WIDGET_DISPLAY:
+      {
+        // split long stream into lines, without breaking words
+        // an improtant option we have to consider is when the
+        // user sends bf and fg information within the buffer.
+        // in this case, those info will be ignored in the
+        // char array, and added at the beginning of the line.
+        // the only way to achieve this is to pick a color_info_byte
+        // that will tell us that fg and bg info will follow.
+        // this color_info_byte then will be ignored
+
+        char *bg            = COLOR_NONE;
+        char *fg            = COLOR_NONE;
+        char *tmp_color     = COLOR_NONE;
+        int color_operation = 0;
+
+        size_t last_space_index = 0;
+        size_t start_at_index   = 0;
+        size_t length           = 0;
+        size_t skip_rows        = 0;
+
+        // flag to add newline if last character is not a newline
+        bool add_new_line = (w->data->contents[w->data->length - 1] != '\n');
+
+        // save number of rows in data_index
+        w->data_index = 0;
+
+        // add newline an the end of the buffer
+        // needed for lines calculation
+        if (add_new_line)
+        {
+          cnc_buffer_append(w->data, "\n");
+        }
+
+        // dry run to calculate the number of rows
+        for (size_t i = 0; i < w->data->length; i++)
+        {
+          // do not account for color_info_byte
+          if (w->data->contents[i] == COLOR_INFO_BYTE)
+          {
+            start_at_index += 2;
+            i++;
+            continue;
+          }
+
+          if (w->data->contents[i] == '\n' ||
+              i - start_at_index >= w->frame.width)
+          {
+            w->data_index++;
+
+            if (w->data->contents[i] == '\n')
+            {
+              length = i - start_at_index;
+            }
+
+            else if (start_at_index >= last_space_index)
+            {
+              length = i - start_at_index;
+            }
+
+            else
+            {
+              length = last_space_index - start_at_index;
+            }
+
+            row++;
+            start_at_index += length;
+
+            if (w->data->contents[i] == '\n')
+            {
+              start_at_index++;
+            }
+          }
+
+          if (w->data->contents[i] == ' ')
+          {
+            last_space_index = i + 1;
+          }
+        }
+
+        if (w->data_index > w->frame.height)
+        {
+          skip_rows = w->data_index - w->frame.height;
+        }
+
+        // Actual writing of data
+        last_space_index = 0;
+        start_at_index   = 0;
+        length           = 0;
+
+        // overwrite any old chars in the display
+        for (size_t row_index = w->frame.origin.row;
+             row_index < w->frame.origin.row + w->frame.height; row_index++)
+        {
+          sb_index = _index_at_cr(t, col, row_index);
+
+          // fill color data
+          cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, bg, 0);
+          cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, fg, 0);
+
+          cnc_buffer_replace_char(t->screen_buffer, sb_index, w->frame.width,
+                                  ' ');
+        }
+
+        // reset data_index
+        w->data_index = 0;
+
+        // reset row index
+        row = w->frame.origin.row;
+
+        for (size_t i = 0; i < w->data->length; i++)
+        {
+          // do not account for color_info_byte
+          if (w->data->contents[i] == COLOR_INFO_BYTE)
+          {
+            color_operation =
+                _color_code_to_color(w->data->contents[i + 1], &tmp_color);
+
+            switch (color_operation)
+            {
+              case 0:
+                bg = COLOR_NONE;
+                fg = COLOR_NONE;
+                break;
+
+              case 1: bg = tmp_color; break;
+              case 2: fg = tmp_color; break;
+
+              default: break;
+            }
+
+            start_at_index += 2;
+            i++;
+            continue;
+          }
+
+          if (w->data->contents[i] == '\n' ||
+              i - start_at_index >= w->frame.width)
+          {
+            w->data_index++;
+
+            if (w->data->contents[i] == '\n')
+            {
+              length = i - start_at_index;
+            }
+
+            else if (start_at_index >= last_space_index)
+            {
+              length = i - start_at_index;
+            }
+
+            else
+            {
+              length = last_space_index - start_at_index;
+            }
+
+            if (row < w->frame.origin.row + w->frame.height &&
+                w->data_index + w->index > skip_rows)
+            {
+              sb_index = _index_at_cr(t, col, row);
+
+              // fill color data
+              cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, bg,
+                                      0);
+              cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, fg, 0);
+              // write chars to line
+              cnc_buffer_replace_text(t->screen_buffer, sb_index, length,
+                                      w->data->contents, start_at_index);
+
+              row++;
+            }
+
+            start_at_index += length;
+
+            if (w->data->contents[i] == '\n')
+            {
+              start_at_index++;
+            }
+          }
+
+          if (w->data->contents[i] == ' ')
+          {
+            last_space_index = i + 1;
+          }
+        }
+
+        // write any remaining chars to the last line.
+        if (start_at_index < w->data->length)
+        {
+          sb_index = _index_at_cr(t, col, row);
+
+          // fill color data
+          cnc_buffer_replace_text(t->screen_buffer, sb_index - 10, 5, bg, 0);
+          cnc_buffer_replace_text(t->screen_buffer, sb_index - 5, 5, fg, 0);
+
+          // write chars to line
+          cnc_buffer_replace_text(t->screen_buffer, sb_index,
+                                  w->data->length - start_at_index,
+                                  w->data->contents, start_at_index);
+        }
+
+        // remove the newline from the end of the buffer
+        // this was added for lines calculation
+        if (add_new_line)
+        {
+          cnc_buffer_delete_char(w->data, w->data->length - 1);
+        }
+      }
+      break;
+
+      default: break;
     }
   }
-}
 
-void cnc_terminal_update_and_redraw(cnc_terminal *t)
-{
-  cnc_terminal_update_screen_buffer(t);
-  cnc_terminal_redraw(t);
+  // redraw the terminal
+  _cnc_terminal_redraw(t);
 }
 
 void cnc_terminal_set_row_fg(cnc_terminal *t, size_t row, const char *color)
@@ -1688,91 +1633,62 @@ static int _cnc_terminal_get_user_input(cnc_terminal *t)
 
   switch (result)
   {
-  case KEY_ARROW_UP:
-  case 'k':
-    _vim_mode_k(fw);
-    return result;
+    case KEY_ARROW_UP:
+    case 'k': _vim_mode_k(fw); return result;
 
-  case KEY_ARROW_DN:
-  case 'j':
-    _vim_mode_j(fw);
-    return result;
+    case KEY_ARROW_DN:
+    case 'j': _vim_mode_j(fw); return result;
 
-  case KEY_ARROW_RT:
-  case 'l':
-    _vim_mode_l(fw);
-    return result;
+    case KEY_ARROW_RT:
+    case 'l': _vim_mode_l(fw); return result;
 
-  case KEY_ARROW_LT:
-  case 'h':
-    _vim_mode_h(fw);
-    return result;
+    case KEY_ARROW_LT:
+    case 'h': _vim_mode_h(fw); return result;
 
-  case 'e':
-    _vim_mode_e(fw);
-    return result;
+    case 'e': _vim_mode_e(fw); return result;
 
-  case 'b':
-    _vim_mode_b(fw);
-    return result;
+    case 'b': _vim_mode_b(fw); return result;
 
-  case KEY_PAGE_UP:
-    _page_up(fw);
-    return result;
+    case KEY_PAGE_UP: _page_up(fw); return result;
 
-  case KEY_PAGE_DN:
-    _page_dn(fw);
-    return result;
+    case KEY_PAGE_DN: _page_dn(fw); return result;
 
-  case KEY_ESCAPE:
-    cnc_terminal_set_mode(t, MODE_CMD);
-    return result;
+    case KEY_ESCAPE: cnc_terminal_set_mode(t, MODE_CMD); return result;
 
-  case KEY_INSERT:
-  case 'i':
-    cnc_terminal_set_mode(t, MODE_INS);
-    return result;
+    case KEY_INSERT:
+    case 'i': cnc_terminal_set_mode(t, MODE_INS); return result;
 
-  case KEY_TAB:
-    cnc_terminal_focus_next(t);
-    return result;
+    case KEY_TAB: cnc_terminal_focus_next(t); return result;
 
-  case 'a':
-    cnc_terminal_set_mode(t, MODE_INS);
+    case 'a':
+      cnc_terminal_set_mode(t, MODE_INS);
 
-    if (fw && fw->type == WIDGET_PROMPT && fw->data_index < fw->data->length)
-    {
-      fw->data_index++;
-    }
+      if (fw && fw->type == WIDGET_PROMPT && fw->data_index < fw->data->length)
+      {
+        fw->data_index++;
+      }
 
-    return result;
+      return result;
 
-  case 'A':
-    _vim_mode_$(fw);
-    cnc_terminal_set_mode(t, MODE_INS);
-    return result;
+    case 'A':
+      _vim_mode_$(fw);
+      cnc_terminal_set_mode(t, MODE_INS);
+      return result;
 
-  case '0':
-    _vim_mode_0(fw);
-    return result;
+    case '0': _vim_mode_0(fw); return result;
 
-  case '$':
-    _vim_mode_$(fw);
-    return result;
+    case '$': _vim_mode_$(fw); return result;
 
-  case 'x':
-    _vim_mode_x(fw);
-    return result;
+    case 'x': _vim_mode_x(fw); return result;
 
-  default:
-    return result;
+    default: return result;
   }
 }
 
 int cnc_terminal_get_user_input(cnc_terminal *t)
 {
   int return_value = _cnc_terminal_get_user_input(t);
-  cnc_terminal_update_and_redraw(t);
+  cnc_terminal_update(t);
 
   return return_value;
 }
