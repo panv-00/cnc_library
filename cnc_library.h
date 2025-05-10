@@ -203,13 +203,11 @@ typedef struct
   size_t scr_rows;
   size_t scr_cols;
   struct termios orig_term;
-  bool is_reset;
   bool in_raw_mode;
   bool can_change_mode;
   bool can_change_focus;
   cnc_terminal_mode mode;
   cnc_buffer *screen_buffer;
-  cnc_buffer *screen_buffer_old;
   size_t widgets_count;
   cnc_widget **widgets;
   cnc_widget *focused_widget;

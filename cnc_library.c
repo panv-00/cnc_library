@@ -976,9 +976,6 @@ void cnc_terminal_check_for_resize(cnc_terminal *t)
     uint16_t new_rows = t->scr_rows;
     uint16_t new_cols = t->scr_cols;
 
-    t->screen_buffer_old =
-        cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
-
     t->screen_buffer =
         cnc_buffer_resize(t->screen_buffer, (new_cols + 16) * new_rows);
 
@@ -1027,7 +1024,6 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
 
   t->scr_rows         = 0;
   t->scr_cols         = 0;
-  t->is_reset         = false;
   t->in_raw_mode      = false;
   t->can_change_mode  = true;
   t->can_change_focus = true;
@@ -1077,15 +1073,6 @@ cnc_terminal *cnc_terminal_init(size_t min_width, size_t min_height)
   t->screen_buffer = cnc_buffer_init((t->scr_cols + 16) * t->scr_rows);
 
   if (t->screen_buffer == NULL)
-  {
-    cnc_terminal_destroy(t);
-
-    return NULL;
-  }
-
-  t->screen_buffer_old = cnc_buffer_init((t->scr_cols + 16) * t->scr_rows);
-
-  if (t->screen_buffer_old == NULL)
   {
     cnc_terminal_destroy(t);
 
@@ -1267,7 +1254,6 @@ void cnc_terminal_screenbuffer_reset(cnc_terminal *t)
   size_t sb_i; // screen_buffer index
 
   cnc_buffer_clear(t->screen_buffer);
-  t->is_reset = true;
 
   for (size_t i = 0; i < t->scr_rows; i++)
   {
@@ -1389,61 +1375,7 @@ static void _cnc_terminal_redraw(cnc_terminal *t)
     return;
   }
 
-  // TODO: write only bytes that have changed.
-  if (t->screen_buffer_old->length == 0 || t->is_reset)
-  {
-    for (size_t i = 0; i < t->screen_buffer->length; i++)
-    {
-      t->screen_buffer_old->contents[i] = t->screen_buffer->contents[i];
-    }
-
-    t->screen_buffer_old->length = t->screen_buffer->length;
-
-    if (t->is_reset)
-    {
-      t->is_reset = false;
-    }
-
-    write(STDOUT_FILENO, t->screen_buffer->contents, t->screen_buffer->size);
-  }
-
-  else
-  {
-    // printf("... seems there is data!!!\n\r");
-    // sleep(1);
-    // write(STDOUT_FILENO, t->screen_buffer->contents, t->screen_buffer->size);
-
-    size_t sb_i;
-    size_t sb_first_i;
-
-    for (size_t r = 0; r < t->scr_rows; r++)
-    {
-      for (size_t c = 0; c < t->scr_cols; c++)
-      {
-        sb_i = _index_at_cr(t, c + 1, r + 1);
-
-        if (t->screen_buffer->contents[sb_i] == ' ' ||
-            t->screen_buffer->contents[sb_i] !=
-                t->screen_buffer_old->contents[sb_i])
-        {
-          sb_first_i = _index_at_cr(t, 1, r + 1);
-          t->screen_buffer_old->contents[sb_i] =
-              t->screen_buffer->contents[sb_i];
-          POSCURSOR(c + 1, r + 1);
-
-          // write row bg, then row fg
-          write(STDOUT_FILENO, t->screen_buffer->contents + sb_first_i - 10, 5);
-          write(STDOUT_FILENO, t->screen_buffer->contents + sb_first_i - 5, 5);
-
-          // write the char that is different
-          write(STDOUT_FILENO, t->screen_buffer->contents + sb_i, 1);
-
-          // reset colors
-          write(STDOUT_FILENO, COLOR_DEFAULT, 4);
-        }
-      }
-    }
-  }
+  write(STDOUT_FILENO, t->screen_buffer->contents, t->screen_buffer->size);
 
   cnc_widget *w = cnc_terminal_focused_widget(t);
 
@@ -1950,7 +1882,6 @@ void cnc_terminal_destroy(cnc_terminal *t)
 
   // destroy screen buffers
   cnc_buffer_destroy(t->screen_buffer);
-  cnc_buffer_destroy(t->screen_buffer_old);
 
   // destroy widgets
   for (size_t i = 0; i < t->widgets_count; i++)
