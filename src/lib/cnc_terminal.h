@@ -15,7 +15,6 @@
 
 #include "cnc_buffer.h"
 #include "cnc_cursor.h"
-#include "cnc_tools.h"
 #include "cnc_widget.h"
 
 // Cursor and Screen Stuff
