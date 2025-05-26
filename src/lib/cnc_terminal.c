@@ -1510,8 +1510,8 @@ void ct_update(cnc_terminal *ct)
 
             // prepare next row_info
             row_info.first_index = counter;
-            row_info.bg          = CTT_PV(0);
-            row_info.fg          = CTT_PV(0);
+            row_info.bg          = ct->rows_info[row_index - 1].bg;
+            row_info.fg          = ct->rows_info[row_index - 1].fg;
 
             continue;
           }
