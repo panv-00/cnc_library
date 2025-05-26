@@ -296,6 +296,66 @@ bool cb_insert(cnc_buffer *cb, const cnc_term_token token, size_t index)
   return true;
 }
 
+bool cb_locate_buffer(cnc_buffer *cb, cnc_buffer *search, size_t *location)
+{
+  if (cb == NULL || cb->data == NULL || search == NULL ||
+      search->data == NULL || location == NULL)
+  {
+    return false;
+  }
+
+  size_t buffer_length = cb->size;
+  size_t search_length = search->size;
+
+  if (buffer_length == 0 || buffer_length < search_length)
+  {
+    return false;
+  }
+
+  if (search_length == 0)
+  {
+    *location = 0;
+
+    return true;
+  }
+
+  for (size_t i = 0; i <= buffer_length - search_length; i++)
+  {
+    size_t j;
+
+    for (j = 0; j < search_length; j++)
+    {
+      if (ctt_equal(&cb->data[i + j], &search->data[j]) == false)
+      {
+        break;
+      }
+    }
+
+    if (j == search_length)
+    {
+      *location = i;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool cb_locate_c_str(cnc_buffer *cb, const char *str, size_t *location)
+{
+  bool return_value = false;
+
+  cnc_buffer search;
+  cb_init(&search, strlen(str) + 1);
+
+  cb_set_text(&search, str);
+  return_value = cb_locate_buffer(cb, &search, location);
+
+  cb_destroy(&search);
+
+  return return_value;
+}
+
 bool cb_overwrite(cnc_buffer *dst, size_t dst_start, size_t length,
                   cnc_buffer *src, size_t src_start)
 {

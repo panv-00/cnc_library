@@ -38,6 +38,8 @@ const cnc_term_token *cb_get(const cnc_buffer *cb, size_t index);
 
 bool cb_init(cnc_buffer *cb, size_t max_capacity);
 bool cb_insert(cnc_buffer *cb, const cnc_term_token token, size_t index);
+bool cb_locate_buffer(cnc_buffer *cb, cnc_buffer *search, size_t *location);
+bool cb_locate_c_str(cnc_buffer *cb, const char *str, size_t *location);
 bool cb_overwrite(cnc_buffer *dst, size_t dst_start, size_t length,
                   cnc_buffer *src, size_t src_start);
 bool cb_push(cnc_buffer *cb, const cnc_term_token token);
