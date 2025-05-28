@@ -31,6 +31,7 @@
 #define W_3 18 // ...
 
 // ASCII values Table
+#define C_NUL 0x00 // Null char '\0'
 #define C_COL 0x05 // Color Info Byte
 #define C_TAB 0x09 // Tab
 #define C_ENT 0x0A // Enter
