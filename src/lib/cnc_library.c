@@ -156,7 +156,7 @@ bool ca_setup(cnc_app *ca, char *version, char *title, char *welcome_message,
     return false;
   }
 
-  ca->cw_title_bar = ct_add_widget(ca->cterm, WIDGET_INFO);
+  ca->cw_title_bar = ct_add_widget(ca->cterm, WIDGET_TITLE);
   ca->cw_display   = ct_add_widget(ca->cterm, WIDGET_DISPLAY);
   ca->cw_info_bar  = ct_add_widget(ca->cterm, WIDGET_INFO);
   ca->cw_prompt    = ct_add_widget(ca->cterm, WIDGET_PROMPT);

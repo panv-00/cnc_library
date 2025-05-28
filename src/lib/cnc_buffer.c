@@ -155,8 +155,33 @@ void cb_destroy(cnc_buffer *cb)
   cb->capacity = 0;
 }
 
+bool cb_equal(cnc_buffer *cb, cnc_buffer *match)
+{
+  if (cb == NULL || cb->data == NULL || match == NULL || match->data == NULL)
+  {
+    return false;
+  }
+
+  if (cb->size != match->size)
+  {
+    return false;
+  }
+
+  for (size_t i = 0; i < cb->size; ++i)
+  {
+    if (ctt_equal(&cb->data[i], &match->data[i]) == false)
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool cb_equal_c_str(cnc_buffer *cb, char *str)
 {
+  bool return_value = false;
+
   if (cb == NULL || str == NULL)
   {
     return false;
@@ -164,7 +189,7 @@ bool cb_equal_c_str(cnc_buffer *cb, char *str)
 
   cnc_buffer cb_str;
 
-  if (cb_init(&cb_str, strlen(str) + 1) == false)
+  if (cb_init(&cb_str, strlen(str)) == false)
   {
     return false;
   }
@@ -176,26 +201,10 @@ bool cb_equal_c_str(cnc_buffer *cb, char *str)
     return false;
   }
 
-  if (cb->size != cb_str.size)
-  {
-    cb_destroy(&cb_str);
-
-    return false;
-  }
-
-  for (size_t i = 0; i < cb->size; ++i)
-  {
-    if (ctt_equal(&cb->data[i], &cb_str.data[i]) == false)
-    {
-      cb_destroy(&cb_str);
-
-      return false;
-    }
-  }
-
+  return_value = cb_equal(cb, &cb_str);
   cb_destroy(&cb_str);
 
-  return true;
+  return return_value;
 }
 
 const cnc_term_token *cb_get(const cnc_buffer *cb, size_t index)

@@ -32,6 +32,7 @@ void   cb_clear(cnc_buffer *cb);
 size_t cb_data_length(cnc_buffer *cb, size_t start_index, size_t count);
 size_t cb_data_width(cnc_buffer *cb, size_t start_index, size_t count);
 void   cb_destroy(cnc_buffer *cb);
+bool   cb_equal(cnc_buffer *cb, cnc_buffer *match);
 bool   cb_equal_c_str(cnc_buffer *cb, char *str);
 
 const cnc_term_token *cb_get(const cnc_buffer *cb, size_t index);

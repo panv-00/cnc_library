@@ -1,16 +1,17 @@
 #include "cnc_widget.h"
 
-void cw_destroy(cnc_widget *cw)
+void cw_destroy(cnc_widget **cw)
 {
-  if (cw == NULL)
+  if (cw == NULL || *cw == NULL)
   {
     return;
   }
 
-  cb_destroy(&cw->buffer);
+  cb_destroy(&(*cw)->buffer);
 
-  free(cw);
-  cw = NULL;
+  free(*cw);
+
+  *cw = NULL;
 }
 
 cnc_widget *cw_init(cw_type type)
@@ -46,6 +47,18 @@ cnc_widget *cw_init(cw_type type)
 
   switch (type)
   {
+    case WIDGET_TITLE:
+      buffer_size   = INFO_BUFFER_SIZE;
+      cw->fg_main   = ctt_parse_value(KS_GRE_FG);
+      cw->fg_alt    = ctt_parse_value(KS_YEL_FG);
+      cw->can_focus = false;
+      break;
+
+    case WIDGET_DISPLAY:
+      buffer_size   = DISPLAY_BUFFER_SIZE;
+      cw->can_focus = true;
+      break;
+
     case WIDGET_INFO:
       buffer_size   = INFO_BUFFER_SIZE;
       cw->bg_main   = ctt_parse_value(KS_GRE_BG);
@@ -60,11 +73,6 @@ cnc_widget *cw_init(cw_type type)
       // cw->background = ctt_parse_value(KS_BLA_BG);
       cw->fg_main   = ctt_parse_value(KS_CYA_FG);
       cw->fg_alt    = ctt_parse_value(KS_RED_FG);
-      cw->can_focus = true;
-      break;
-
-    case WIDGET_DISPLAY:
-      buffer_size   = DISPLAY_BUFFER_SIZE;
       cw->can_focus = true;
       break;
   }

@@ -1,4 +1,5 @@
 #include "cnc_terminal.h"
+#include "cnc_widget.h"
 
 // Signals flags
 volatile sig_atomic_t suspend_flag = 0;
@@ -653,7 +654,7 @@ cnc_widget *ct_add_widget(cnc_terminal *ct, cw_type type)
 
   if (cw->frame.height + height > ct->scr_rows)
   {
-    cw_destroy(cw);
+    cw_destroy(&cw);
 
     return NULL;
   }
@@ -666,7 +667,7 @@ cnc_widget *ct_add_widget(cnc_terminal *ct, cw_type type)
 
     if (new_ct_widgets == NULL)
     {
-      cw_destroy(cw);
+      cw_destroy(&cw);
 
       return NULL;
     }
@@ -753,7 +754,7 @@ void ct_destroy(cnc_terminal *ct)
   {
     if (ct->widgets[i])
     {
-      cw_destroy(ct->widgets[i]);
+      cw_destroy(&(ct->widgets[i]));
     }
   }
 
@@ -1232,6 +1233,7 @@ bool ct_setup_widgets(cnc_terminal *ct)
   {
     switch (ct->widgets[i]->type)
     {
+      case WIDGET_TITLE:
       case WIDGET_INFO:
       case WIDGET_PROMPT:
         tlw++;
@@ -1309,15 +1311,20 @@ void ct_update(cnc_terminal *ct)
 
     switch (cw->type)
     {
+      case WIDGET_TITLE:
       case WIDGET_INFO:
       case WIDGET_PROMPT:
       {
         cb_replace(&cw->buffer, &token_enter, &token_space);
         cb_replace(&cw->buffer, &token_return, &token_blank);
 
-        // Skip a line
-        _ct_render_border_row(&buf_ptr, ct->scr_cols);
-        _ct_render_enter(&buf_ptr);
+        // Skip a line for info and prompt
+        if (cw->type != WIDGET_TITLE)
+        {
+          // _ct_render_border_row(&buf_ptr, ct->scr_cols);
+          _ct_render_empty_row(&buf_ptr, ct->scr_cols);
+          _ct_render_enter(&buf_ptr);
+        }
 
         // BG and FG
         // user defined bg and fg overwrite system defaults
@@ -1343,7 +1350,7 @@ void ct_update(cnc_terminal *ct)
           }
 
           // setting up WIDGET_INFO Colors
-          else
+          else if (cw->type == WIDGET_INFO)
           {
             if (ct->focused_widget->type == WIDGET_DISPLAY)
             {
@@ -1354,6 +1361,11 @@ void ct_update(cnc_terminal *ct)
             {
               _ct_render_color_set(&buf_ptr, cw->bg_main, cw->fg_main);
             }
+          }
+
+          else
+          {
+            _ct_render_color_set(&buf_ptr, cw->bg_main, cw->fg_main);
           }
         }
 
@@ -1395,6 +1407,12 @@ void ct_update(cnc_terminal *ct)
         }
 
         _ct_render_color_reset(&buf_ptr);
+
+        // add line under WIDGET_TITLE
+        if (cw->type == WIDGET_TITLE)
+        {
+          _ct_render_border_row(&buf_ptr, ct->scr_cols);
+        }
 
         if (widget_index < ct->widgets_count - 1)
         {

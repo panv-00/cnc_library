@@ -21,9 +21,10 @@
 
 typedef enum
 {
-  WIDGET_INFO = 1,
+  WIDGET_TITLE,
+  WIDGET_DISPLAY,
+  WIDGET_INFO,
   WIDGET_PROMPT,
-  WIDGET_DISPLAY
 
 } cw_type;
 
@@ -71,7 +72,7 @@ typedef struct
 } cnc_widget;
 
 // main functions
-void cw_destroy(cnc_widget *cw);
+void cw_destroy(cnc_widget **cw);
 
 cnc_widget *cw_init(cw_type type);
 
