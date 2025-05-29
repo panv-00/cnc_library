@@ -507,7 +507,7 @@ static void _ct_vm_$(cnc_widget *cw)
 
 static void _ct_vm_b(cnc_widget *cw)
 {
-  if (cw == NULL)
+  if (cw == NULL || cw->type != WIDGET_PROMPT)
   {
     return;
   }
@@ -544,7 +544,7 @@ static void _ct_vm_b(cnc_widget *cw)
 
 static void _ct_vm_e(cnc_widget *cw)
 {
-  if (cw == NULL)
+  if (cw == NULL || cw->type != WIDGET_PROMPT)
   {
     return;
   }
@@ -576,7 +576,6 @@ static void _ct_vm_e(cnc_widget *cw)
   _ct_vm_h(cw);
 }
 
-// TODO:
 static void _ct_vm_h(cnc_widget *cw)
 {
   if (cw && cw->type == WIDGET_PROMPT && cw->data_index > 0)

@@ -84,6 +84,7 @@ int main(void)
   }
 
   ca_destroy(&sample);
+
   printf("No errors reported!\n");
 
   return 0;
