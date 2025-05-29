@@ -85,6 +85,15 @@ typedef struct
 
 } cnc_terminal;
 
+typedef void (*ActionFunc)(cnc_terminal *ct);
+
+typedef struct
+{
+  int        key;
+  ActionFunc func;
+
+} CommandMap;
+
 // main functions
 cnc_widget *ct_add_widget(cnc_terminal *ct, cw_type type);
 

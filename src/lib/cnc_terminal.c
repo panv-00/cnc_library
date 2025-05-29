@@ -1,5 +1,4 @@
 #include "cnc_terminal.h"
-#include "cnc_widget.h"
 
 // Signals flags
 volatile sig_atomic_t suspend_flag = 0;
@@ -18,15 +17,14 @@ static void __handle__resize(int sig)
 // private functions declarations
 static void _ct_check_for_suspend(cnc_terminal *ct);
 static int  _ct_color_code_to_color(int color_code, cnc_term_token *color);
-static void _ct_delete_char(cnc_widget *cw);
-// static int  _ct_get_user_input(cnc_terminal *ct);
+static void _ct_delete_char(cnc_terminal *ct);
 
 static cnc_term_token _ct_getch(cnc_terminal *ct);
 
 static void _ct_insert_char(cnc_widget *cw, char c);
 static void _ct_insert_token(cnc_widget *cw, cnc_term_token ctt_c);
-static void _ct_page_dn(cnc_widget *cw);
-static void _ct_page_up(cnc_widget *cw);
+static void _ct_page_dn(cnc_terminal *ct);
+static void _ct_page_up(cnc_terminal *ct);
 static void _ct_redraw(cnc_terminal *ct);
 static void _ct_render_append_token(char **dst_ptr, cnc_term_token token);
 static void _ct_render_border_row(char **buf_ptr, size_t row_width);
@@ -37,24 +35,24 @@ static void _ct_render_data(char **buf_ptr, cnc_buffer *src, size_t start_index,
                             size_t upper_bound, size_t row_width);
 static void _ct_render_empty_row(char **buf_ptr, size_t row_width);
 static void _ct_render_enter(char **buf_ptr);
-// static void _ct_render_save_row_index(size_t *u_bounds, size_t *rows,
-//                                       size_t *row, size_t height,
-//                                       size_t *counter,
-//                                       size_t *first_start_index);
 static void _ct_restore(cnc_terminal *ct);
+static void _ct_set_mode_cmd(cnc_terminal *ct);
+static void _ct_set_mode_ins(cnc_terminal *ct);
 static bool _ct_set_raw_mode(cnc_terminal *ct);
 
 // Vim-Like functions
 // vm -> vim_mode
-static void _ct_vm_0(cnc_widget *cw);
-static void _ct_vm_$(cnc_widget *cw);
-static void _ct_vm_b(cnc_widget *cw);
-static void _ct_vm_e(cnc_widget *cw);
-static void _ct_vm_h(cnc_widget *cw);
-static void _ct_vm_j(cnc_widget *cw);
-static void _ct_vm_k(cnc_widget *cw);
-static void _ct_vm_l(cnc_widget *cw);
-static void _ct_vm_x(cnc_widget *cw);
+static void _ct_vm_0(cnc_terminal *ct);
+static void _ct_vm_$(cnc_terminal *ct);
+static void _ct_vm_a(cnc_terminal *ct);
+static void _ct_vm_aa(cnc_terminal *ct);
+static void _ct_vm_b(cnc_terminal *ct);
+static void _ct_vm_e(cnc_terminal *ct);
+static void _ct_vm_h(cnc_terminal *ct);
+static void _ct_vm_j(cnc_terminal *ct);
+static void _ct_vm_k(cnc_terminal *ct);
+static void _ct_vm_l(cnc_terminal *ct);
+static void _ct_vm_x(cnc_terminal *ct);
 
 // private function definitions
 static void _ct_check_for_suspend(cnc_terminal *ct)
@@ -154,7 +152,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
 {
   if (ct == NULL)
   {
-    return ctt_parse_value(0);
+    return (cnc_term_token){0};
   }
 
   int bytes_read = 0;
@@ -163,7 +161,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
 
   if (bytes_read <= 0)
   {
-    return ctt_parse_value(0);
+    return (cnc_term_token){0};
   }
 
   uint8_t ch[CTT_MAX_TOKEN_SIZE] = {0};
@@ -258,43 +256,55 @@ static void _ct_insert_token(cnc_widget *cw, cnc_term_token ctt_c)
   }
 }
 
-// TODO:
-// page up and page down should run even if display is not selected...
-static void _ct_page_dn(cnc_widget *cw)
+static void _ct_page_dn(cnc_terminal *ct)
 {
-  if (cw == NULL || cw->type != WIDGET_DISPLAY)
+  if (ct == NULL)
   {
     return;
   }
 
-  if (cw->index + 2 * (cw->frame.height - 2) < cw->data_index)
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_DISPLAY)
   {
-    cw->index += (cw->frame.height - 2);
+    return;
+  }
+
+  if (fw->index + 2 * (fw->frame.height - 2) < fw->data_index)
+  {
+    fw->index += (fw->frame.height - 2);
 
     return;
   }
 
-  if (cw->index + 2 * cw->frame.height > cw->data_index)
+  if (fw->index + 2 * fw->frame.height > fw->data_index)
   {
-    cw->index = cw->data_index - cw->frame.height;
+    fw->index = fw->data_index - fw->frame.height;
   }
 }
 
-static void _ct_page_up(cnc_widget *cw)
+static void _ct_page_up(cnc_terminal *ct)
 {
-  if (cw == NULL || cw->type != WIDGET_DISPLAY)
+  if (ct == NULL)
   {
     return;
   }
 
-  if (cw->index > cw->frame.height)
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_DISPLAY)
   {
-    cw->index -= (cw->frame.height - 2);
+    return;
+  }
+
+  if (fw->index > fw->frame.height)
+  {
+    fw->index -= (fw->frame.height - 2);
   }
 
   else
   {
-    cw->index = 0;
+    fw->index = 0;
   }
 }
 
@@ -428,6 +438,40 @@ static void _ct_restore(cnc_terminal *ct)
   fflush(stdout);
 }
 
+static void _ct_set_mode_cmd(cnc_terminal *ct)
+{
+  if (ct == NULL)
+  {
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  ct_set_mode(ct, MODE_CMD);
+}
+
+static void _ct_set_mode_ins(cnc_terminal *ct)
+{
+  if (ct == NULL)
+  {
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  ct_set_mode(ct, MODE_INS);
+}
+
 static bool _ct_set_raw_mode(cnc_terminal *ct)
 {
   if (ct == NULL)
@@ -464,168 +508,301 @@ static bool _ct_set_raw_mode(cnc_terminal *ct)
   return true;
 }
 
-static void _ct_vm_0(cnc_widget *cw)
+static void _ct_vm_0(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_PROMPT)
-  {
-    cw->data_index = 0;
-    cw->index      = 0;
-  }
-
-  if (cw && cw->type == WIDGET_DISPLAY)
-  {
-    if (cw->data_index > cw->frame.height)
-    {
-      cw->index = cw->data_index - cw->frame.height;
-    }
-  }
-}
-
-static void _ct_vm_$(cnc_widget *cw)
-{
-  if (cw && cw->type == WIDGET_PROMPT)
-  {
-    cnc_term_token ctt_c = cw->buffer.data[cw->buffer.size - 1];
-
-    cw->data_index = cw->buffer.size;
-
-    while (
-      cb_data_width(&cw->buffer, cw->index, cw->data_index - cw->index + 1) +
-        PROMPT_PAD + ctt_c.token.width >
-      cw->frame.width)
-    {
-
-      cw->index++;
-    }
-  }
-
-  if (cw && cw->type == WIDGET_DISPLAY)
-  {
-    cw->index = 0;
-  }
-}
-
-static void _ct_vm_b(cnc_widget *cw)
-{
-  if (cw == NULL || cw->type != WIDGET_PROMPT)
+  if (ct == NULL)
   {
     return;
   }
 
-  bool move_backward      = cw->data_index > 0;
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL)
+  {
+    return;
+  }
+
+  if (fw->type == WIDGET_PROMPT)
+  {
+    fw->data_index = 0;
+    fw->index      = 0;
+
+    return;
+  }
+
+  if (fw->type == WIDGET_DISPLAY)
+  {
+    if (fw->data_index > fw->frame.height)
+    {
+      fw->index = fw->data_index - fw->frame.height;
+    }
+  }
+}
+
+static void _ct_vm_$(cnc_terminal *ct)
+{
+  if (ct == NULL)
+  {
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL)
+  {
+    return;
+  }
+
+  if (fw->type == WIDGET_PROMPT)
+  {
+    cnc_term_token ctt_c = fw->buffer.data[fw->buffer.size - 1];
+
+    fw->data_index = fw->buffer.size;
+
+    while (
+      PROMPT_PAD + ctt_c.token.width +
+        cb_data_width(&fw->buffer, fw->index, fw->data_index - fw->index + 1) >
+      fw->frame.width)
+    {
+      fw->index++;
+    }
+
+    return;
+  }
+
+  if (fw->type == WIDGET_DISPLAY)
+  {
+    fw->index = 0;
+  }
+}
+
+static void _ct_vm_a(cnc_terminal *ct)
+{
+  if (ct == NULL)
+  {
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  ct_set_mode(ct, MODE_INS);
+
+  if (fw->data_index < fw->buffer.size)
+  {
+    fw->data_index++;
+  }
+}
+
+static void _ct_vm_aa(cnc_terminal *ct)
+{
+  if (ct == NULL)
+  {
+    return;
+  }
+
+  _ct_vm_$(ct);
+  _ct_set_mode_ins(ct);
+}
+
+static void _ct_vm_b(cnc_terminal *ct)
+{
+  if (ct == NULL)
+  {
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  bool move_backward      = fw->data_index > 0;
   bool curr_char_is_space = false;
 
   if (move_backward)
   {
-    _ct_vm_h(cw);
-    move_backward      = cw->data_index > 0;
-    curr_char_is_space = cw->buffer.data[cw->data_index].token.value == C_SPC;
+    _ct_vm_h(ct);
+    move_backward      = fw->data_index > 0;
+    curr_char_is_space = fw->buffer.data[fw->data_index].token.value == C_SPC;
   }
 
   while (move_backward && curr_char_is_space)
   {
-    _ct_vm_h(cw);
-    move_backward      = cw->data_index > 0;
-    curr_char_is_space = cw->buffer.data[cw->data_index].token.value == C_SPC;
+    _ct_vm_h(ct);
+    move_backward      = fw->data_index > 0;
+    curr_char_is_space = fw->buffer.data[fw->data_index].token.value == C_SPC;
   }
 
   while (move_backward && curr_char_is_space == false)
   {
-    _ct_vm_h(cw);
-    move_backward      = cw->data_index > 0;
-    curr_char_is_space = cw->buffer.data[cw->data_index].token.value == C_SPC;
+    _ct_vm_h(ct);
+    move_backward      = fw->data_index > 0;
+    curr_char_is_space = fw->buffer.data[fw->data_index].token.value == C_SPC;
   }
 
-  if (cw->data_index > 0)
+  if (fw->data_index > 0)
   {
-    _ct_vm_l(cw);
+    _ct_vm_l(ct);
   }
 }
 
-static void _ct_vm_e(cnc_widget *cw)
+static void _ct_vm_e(cnc_terminal *ct)
 {
-  if (cw == NULL || cw->type != WIDGET_PROMPT)
+  if (ct == NULL)
   {
     return;
   }
 
-  bool move_forward       = cw->data_index < cw->buffer.size;
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  bool move_forward       = fw->data_index < fw->buffer.size;
   bool curr_char_is_space = false;
 
   if (move_forward)
   {
-    _ct_vm_l(cw);
-    move_forward       = cw->data_index < cw->buffer.size;
-    curr_char_is_space = cw->buffer.data[cw->data_index].token.value == C_SPC;
+    _ct_vm_l(ct);
+    move_forward       = fw->data_index < fw->buffer.size;
+    curr_char_is_space = fw->buffer.data[fw->data_index].token.value == C_SPC;
   }
 
   while (move_forward && curr_char_is_space)
   {
-    _ct_vm_l(cw);
-    move_forward       = cw->data_index < cw->buffer.size;
-    curr_char_is_space = cw->buffer.data[cw->data_index].token.value == C_SPC;
+    _ct_vm_l(ct);
+    move_forward       = fw->data_index < fw->buffer.size;
+    curr_char_is_space = fw->buffer.data[fw->data_index].token.value == C_SPC;
   }
 
   while (move_forward && curr_char_is_space == false)
   {
-    _ct_vm_l(cw);
-    move_forward       = cw->data_index < cw->buffer.size;
-    curr_char_is_space = cw->buffer.data[cw->data_index].token.value == C_SPC;
+    _ct_vm_l(ct);
+    move_forward       = fw->data_index < fw->buffer.size;
+    curr_char_is_space = fw->buffer.data[fw->data_index].token.value == C_SPC;
   }
 
-  _ct_vm_h(cw);
+  _ct_vm_h(ct);
 }
 
-static void _ct_vm_h(cnc_widget *cw)
+static void _ct_vm_h(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_PROMPT && cw->data_index > 0)
+  if (ct == NULL)
   {
-    cw->data_index--;
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  if (fw->data_index > 0)
+  {
+    fw->data_index--;
 
     size_t pad = PROMPT_PAD + 1 + 3;
 
-    if (cw->index > 0 && cw->data_index - cw->index < cw->frame.width - pad)
+    if (fw->index > 0 && fw->data_index + pad < fw->frame.width + fw->index)
     {
-      cw->index--;
+      fw->index--;
     }
   }
 }
 
-static void _ct_vm_j(cnc_widget *cw)
+static void _ct_vm_j(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_DISPLAY &&
-      cw->index + cw->frame.height < cw->data_index)
+  if (ct == NULL)
   {
-    cw->index++;
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_DISPLAY)
+  {
+    return;
+  }
+
+  if (fw->index + fw->frame.height < fw->data_index)
+  {
+    fw->index++;
   }
 }
 
-static void _ct_vm_k(cnc_widget *cw)
+static void _ct_vm_k(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_DISPLAY && cw->index > 0)
+  if (ct == NULL)
   {
-    cw->index--;
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_DISPLAY)
+  {
+    return;
+  }
+
+  if (fw->index > 0)
+  {
+    fw->index--;
   }
 }
 
-static void _ct_vm_l(cnc_widget *cw)
+static void _ct_vm_l(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_PROMPT && cw->data_index < cw->buffer.size)
+  if (ct == NULL)
   {
-    cw->data_index++;
+    return;
+  }
 
-    if (cw->data_index - cw->index > cw->frame.width - PROMPT_PAD - 1)
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  if (fw->data_index < fw->buffer.size)
+  {
+    fw->data_index++;
+
+    if (fw->data_index - fw->index > fw->frame.width - PROMPT_PAD - 1)
     {
-      cw->index++;
+      fw->index++;
     }
   }
 }
 
-static void _ct_vm_x(cnc_widget *cw)
+static void _ct_vm_x(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_PROMPT && cw->data_index < cw->buffer.size)
+  if (ct == NULL)
   {
-    cb_remove(&cw->buffer, cw->data_index);
+    return;
+  }
+
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  if (fw->data_index < fw->buffer.size)
+  {
+    cb_remove(&fw->buffer, fw->data_index);
   }
 }
 
@@ -861,23 +1038,40 @@ bool ct_get_size(cnc_terminal *ct)
   return true;
 }
 
-static void _ct_delete_char(cnc_widget *cw)
+static void _ct_delete_char(cnc_terminal *ct)
 {
-  if (cw && cw->type == WIDGET_PROMPT)
+  if (ct == NULL || ct->mode != MODE_INS)
   {
-    if (cw->data_index > 0)
-    {
-      if (cb_remove(&cw->buffer, cw->data_index - 1))
-      {
-        cw->data_index--;
+    return;
+  }
 
-        if (cw->index > 0)
-        {
-          cw->index--;
-        }
+  cnc_widget *fw = ct->focused_widget;
+
+  if (fw == NULL || fw->type != WIDGET_PROMPT)
+  {
+    return;
+  }
+
+  if (fw->data_index > 0)
+  {
+    if (cb_remove(&fw->buffer, fw->data_index - 1))
+    {
+      fw->data_index--;
+
+      if (fw->index > 0)
+      {
+        fw->index--;
       }
     }
   }
+}
+
+void do_quit(char key, int context)
+{
+  (void)key;
+  (void)context;
+  printf("Exiting...\n");
+  exit(0);
 }
 
 int ct_get_user_input(cnc_terminal *ct)
@@ -887,9 +1081,37 @@ int ct_get_user_input(cnc_terminal *ct)
     return 0;
   }
 
-  cnc_widget    *fw     = ct->focused_widget;
-  int            result = 0;
-  cnc_term_token ctt_result;
+  cnc_widget    *fw         = ct->focused_widget;
+  int            result     = 0;
+  cnc_term_token ctt_result = {0};
+
+  // build the commands map
+  CommandMap commands[] = {
+    {C_BCK,         _ct_delete_char },
+    {KS_ARR_UP,     _ct_vm_k        },
+    {'k',           _ct_vm_k        },
+    {KS_ARR_DN,     _ct_vm_j        },
+    {'j',           _ct_vm_j        },
+    {KS_ARR_RT,     _ct_vm_l        },
+    {'l',           _ct_vm_l        },
+    {KS_ARR_LT,     _ct_vm_h        },
+    {'h',           _ct_vm_h        },
+    {'e',           _ct_vm_e        },
+    {'b',           _ct_vm_b        },
+    {KS_PAG_UP,     _ct_page_up     },
+    {KS_PAG_DN,     _ct_page_dn     },
+    {C_ESC,         _ct_set_mode_cmd},
+    {CTRL_KEY('c'), _ct_set_mode_cmd},
+    {KS_INS___,     _ct_set_mode_ins},
+    {'i',           _ct_set_mode_ins},
+    {C_TAB,         ct_focus_next   },
+    {'a',           _ct_vm_a        },
+    {'A',           _ct_vm_aa       },
+    {'0',           _ct_vm_0        },
+    {'$',           _ct_vm_$        },
+    {'x',           _ct_vm_x        },
+    {'\0',          NULL            }  // end of map array
+  };
 
   while (result == 0)
   {
@@ -905,14 +1127,6 @@ int ct_get_user_input(cnc_terminal *ct)
     ct_check_for_resize(ct);
 
     usleep(10000);
-  }
-
-  // exit insert mode with ctrl-c
-  if (ct->mode == MODE_INS && result == CTRL_KEY('c'))
-  {
-    ct_set_mode(ct, MODE_CMD);
-
-    return result;
   }
 
   // only when prompt has focus
@@ -943,94 +1157,17 @@ int ct_get_user_input(cnc_terminal *ct)
     }
   }
 
-  switch (result)
+  for (size_t i = 0; commands[i].key != 0; i++)
   {
-    case C_BCK:
-      if (ct->mode == MODE_INS)
-      {
-        _ct_delete_char(fw);
-      }
-      return result;
-
-    case KS_ARR_UP:
-    case 'k':
-      _ct_vm_k(fw);
-      return result;
-
-    case KS_ARR_DN:
-    case 'j':
-      _ct_vm_j(fw);
-      return result;
-
-    case KS_ARR_RT:
-    case 'l':
-      _ct_vm_l(fw);
-      return result;
-
-    case KS_ARR_LT:
-    case 'h':
-      _ct_vm_h(fw);
-      return result;
-
-    case 'e':
-      _ct_vm_e(fw);
-      return result;
-
-    case 'b':
-      _ct_vm_b(fw);
-      return result;
-
-    case KS_PAG_UP:
-      _ct_page_up(fw);
-      return result;
-
-    case KS_PAG_DN:
-      _ct_page_dn(fw);
-      return result;
-
-    case C_ESC:
-      ct_set_mode(ct, MODE_CMD);
-      return result;
-
-    case KS_INS___:
-    case 'i':
-      ct_set_mode(ct, MODE_INS);
-      return result;
-
-    case C_TAB:
-      ct_focus_next(ct);
-      return result;
-
-    case 'a':
-      ct_set_mode(ct, MODE_INS);
-
-      if (fw && fw->type == WIDGET_PROMPT && fw->data_index < fw->buffer.size)
-      {
-        fw->data_index++;
-      }
+    if (commands[i].key == result)
+    {
+      commands[i].func(ct);
 
       return result;
-
-    case 'A':
-      _ct_vm_$(fw);
-      ct_set_mode(ct, MODE_INS);
-      return result;
-
-    case '0':
-      _ct_vm_0(fw);
-      return result;
-
-    case '$':
-      _ct_vm_$(fw);
-      return result;
-
-    case 'x':
-      _ct_vm_x(fw);
-      return result;
-
-    default:
-      return result;
+    }
   }
+
+  return result;
 }
 
 cnc_terminal *ct_init(size_t min_height, size_t min_width)
