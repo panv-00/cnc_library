@@ -80,6 +80,7 @@ typedef struct
   uint8_t        widgets_count;
   cnc_widget   **widgets;
   cnc_widget    *focused_widget;
+  cnc_widget    *main_display_widget;
   ct_row_info   *rows_info;
   cnc_cursor     cursor;
 

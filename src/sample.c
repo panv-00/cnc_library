@@ -18,6 +18,9 @@ int main(void)
   // cnc_widget   *info    = sample.cw_info_bar;
   cnc_widget *prompt = sample.cw_prompt;
 
+  // set main display widget
+  term->main_display_widget = display;
+
   cb_append_txt(&display->buffer, "\ntesting a new red line .. ");
 
   // call CTT_PV(C_COL) -> next token sets color info

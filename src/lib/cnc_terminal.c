@@ -1,4 +1,5 @@
 #include "cnc_terminal.h"
+#include "cnc_widget.h"
 
 // Signals flags
 volatile sig_atomic_t suspend_flag = 0;
@@ -264,22 +265,38 @@ static void _ct_page_dn(cnc_terminal *ct)
   }
 
   cnc_widget *fw = ct->focused_widget;
+  cnc_widget *dw = ct->main_display_widget;
 
-  if (fw == NULL || fw->type != WIDGET_DISPLAY)
+  if (fw && fw->type == WIDGET_DISPLAY)
   {
+    if (fw->index + 2 * (fw->frame.height - 2) < fw->data_index)
+    {
+      fw->index += (fw->frame.height - 2);
+
+      return;
+    }
+
+    if (fw->index + 2 * fw->frame.height > fw->data_index)
+    {
+      fw->index = fw->data_index - fw->frame.height;
+    }
+
     return;
   }
 
-  if (fw->index + 2 * (fw->frame.height - 2) < fw->data_index)
+  if (dw && dw->type == WIDGET_DISPLAY)
   {
-    fw->index += (fw->frame.height - 2);
+    if (dw->index + 2 * (dw->frame.height - 2) < dw->data_index)
+    {
+      dw->index += (dw->frame.height - 2);
 
-    return;
-  }
+      return;
+    }
 
-  if (fw->index + 2 * fw->frame.height > fw->data_index)
-  {
-    fw->index = fw->data_index - fw->frame.height;
+    if (dw->index + 2 * dw->frame.height > dw->data_index)
+    {
+      dw->index = dw->data_index - dw->frame.height;
+    }
   }
 }
 
@@ -291,20 +308,34 @@ static void _ct_page_up(cnc_terminal *ct)
   }
 
   cnc_widget *fw = ct->focused_widget;
+  cnc_widget *dw = ct->main_display_widget;
 
-  if (fw == NULL || fw->type != WIDGET_DISPLAY)
+  if (fw && fw->type == WIDGET_DISPLAY)
   {
+    if (fw->index > fw->frame.height)
+    {
+      fw->index -= (fw->frame.height - 2);
+    }
+
+    else
+    {
+      fw->index = 0;
+    }
+
     return;
   }
 
-  if (fw->index > fw->frame.height)
+  if (dw && dw->type == WIDGET_DISPLAY)
   {
-    fw->index -= (fw->frame.height - 2);
-  }
+    if (dw->index > dw->frame.height)
+    {
+      dw->index -= (dw->frame.height - 2);
+    }
 
-  else
-  {
-    fw->index = 0;
+    else
+    {
+      dw->index = 0;
+    }
   }
 }
 
@@ -729,15 +760,19 @@ static void _ct_vm_j(cnc_terminal *ct)
   }
 
   cnc_widget *fw = ct->focused_widget;
+  cnc_widget *dw = ct->main_display_widget;
 
-  if (fw == NULL || fw->type != WIDGET_DISPLAY)
+  if (fw && fw->type == WIDGET_DISPLAY &&
+      fw->index + fw->frame.height < fw->data_index)
   {
+    fw->index++;
     return;
   }
 
-  if (fw->index + fw->frame.height < fw->data_index)
+  if (dw && dw->type == WIDGET_DISPLAY &&
+      dw->index + dw->frame.height < dw->data_index)
   {
-    fw->index++;
+    dw->index++;
   }
 }
 
@@ -749,15 +784,20 @@ static void _ct_vm_k(cnc_terminal *ct)
   }
 
   cnc_widget *fw = ct->focused_widget;
+  cnc_widget *dw = ct->main_display_widget;
 
-  if (fw == NULL || fw->type != WIDGET_DISPLAY)
+  if (fw && fw->type == WIDGET_DISPLAY && fw->index > 0)
   {
+    fw->index--;
+
     return;
   }
 
-  if (fw->index > 0)
+  if (dw && dw->type == WIDGET_DISPLAY && dw->index > 0)
   {
-    fw->index--;
+    dw->index--;
+
+    return;
   }
 }
 
@@ -1226,6 +1266,10 @@ cnc_terminal *ct_init(size_t min_height, size_t min_width)
 
   // no widget has focus at the beginning
   ct->focused_widget = NULL;
+
+  // no main display widget at the beginning
+  // set this in the app to allow scroll from within the prompt
+  ct->main_display_widget = NULL;
 
   if (_ct_set_raw_mode(ct) == false)
   {
