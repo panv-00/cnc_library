@@ -1,5 +1,4 @@
 #include "cnc_terminal.h"
-#include "cnc_widget.h"
 
 // Signals flags
 volatile sig_atomic_t suspend_flag = 0;
@@ -1158,7 +1157,8 @@ int ct_get_user_input(cnc_terminal *ct)
     ctt_result = _ct_getch(ct);
     result     = ctt_result.token.value;
 
-    if (ct->mode == MODE_INS && result == CTRL_KEY('z'))
+    // suspend app on <ctrl-z>
+    if (result == CTRL_KEY('z'))
     {
       suspend_flag = 1;
     }
@@ -1183,7 +1183,10 @@ int ct_get_user_input(cnc_terminal *ct)
     // result is a valid character
     if (result >= C_SPC && result <= C_TLD)
     {
-      _ct_insert_char(fw, result);
+      if (fw->buffer.size < fw->buffer.max_capacity)
+      {
+        _ct_insert_char(fw, result);
+      }
 
       return result;
     }
@@ -1191,7 +1194,10 @@ int ct_get_user_input(cnc_terminal *ct)
     // ctt_result is UTF8
     if (ctt_result.token.type == CTT_UTF8)
     {
-      _ct_insert_token(fw, ctt_result);
+      if (fw->buffer.size < fw->buffer.max_capacity)
+      {
+        _ct_insert_token(fw, ctt_result);
+      }
 
       return ctt_result.token.value;
     }
@@ -1682,31 +1688,29 @@ void ct_update(cnc_terminal *ct)
           {
             cw->data_index++;
 
-            // Finalize the current row info
-            if (last_space_index > 0)
+            if (last_space_index > row_info.first_index)
             {
               row_info.last_index = last_space_index - 1;
+              counter             = last_space_index + 1;
+
+              // Skip any additional whitespace after wrap
+              while (counter < cw->buffer.size &&
+                     ctt_is_whitespace(cw->buffer.data[counter]))
+              {
+                counter++;
+              }
             }
 
             else
             {
-              row_info.last_index = 0;
+              // No whitespace to wrap at so wrap at current counter
+              row_info.last_index = counter - 1;
             }
 
             row_info.is_valid          = 1;
             ct->rows_info[row_index++] = row_info;
 
-            // Advance counter to the next non-space token
-            counter = last_space_index + 1;
-
-            // skip any addititonal spaces
-            while (counter < cw->buffer.size &&
-                   ctt_is_whitespace(cw->buffer.data[counter]))
-            {
-              counter++;
-            }
-
-            // prepare next row_info
+            // Prepare next row_info
             row_info.first_index = counter;
             row_info.bg          = ct->rows_info[row_index - 1].bg;
             row_info.fg          = ct->rows_info[row_index - 1].fg;
@@ -1716,9 +1720,7 @@ void ct_update(cnc_terminal *ct)
 
           if (ctt_is_whitespace(*counter_token))
           {
-            // redefine last word
             last_space_index = counter++;
-
             continue;
           }
 
@@ -1769,6 +1771,7 @@ void ct_update(cnc_terminal *ct)
 
           _ct_render_data(&buf_ptr, &cw->buffer, ct->rows_info[r].first_index,
                           ct->rows_info[r].last_index, ct->scr_cols);
+
           _ct_render_color_reset(&buf_ptr);
 
           if (row < cw->frame.height - 1)
