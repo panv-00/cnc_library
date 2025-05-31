@@ -11,6 +11,8 @@ BIN := ../sample
 
 # Source and object files
 SRC_FILES := $(shell find $(SRC_DIR) -name '*.c')
+# to ignore sample file when used in a project, uncomment below
+# SRC_FILES := $(filter-out ../src/cnc_library/src/sample.c, $(SRC_FILES))
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC_FILES))
 
 # Default target
