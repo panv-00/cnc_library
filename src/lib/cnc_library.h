@@ -27,7 +27,6 @@ typedef struct
 void ca_destroy(cnc_app *ca);
 int  ca_get_user_input(cnc_app *ca);
 bool ca_init(cnc_app *ca, uint32_t min_term_rows, uint32_t min_term_cols);
-void ca_loop(cnc_app *ca);
 void ca_set_info(cnc_app *ca, const char *text);
 bool ca_setup(cnc_app *ca, char *version, char *title, char *welcome_message,
               char *info_bar_text);

@@ -85,7 +85,7 @@ void ca_set_info(cnc_app *ca, const char *text)
   sprintf(buf, "[%5zu/%5zu]", ca->cw_display->buffer.size,
           ca->cw_display->buffer.capacity);
 
-  cb_set_text(&ca->cw_info_bar->buffer, buf);
+  cb_set_txt(&ca->cw_info_bar->buffer, buf);
 
   if (ca->cw_prompt->has_focus)
   {
@@ -184,11 +184,11 @@ bool ca_setup(cnc_app *ca, char *version, char *title, char *welcome_message,
   ca->cterm->can_change_mode  = false;
   ca->cterm->can_change_focus = false;
 
-  cb_set_text(&(ca->cw_title_bar->buffer), title);
+  cb_set_txt(&(ca->cw_title_bar->buffer), title);
   cb_append_txt(&(ca->cw_title_bar->buffer), " (v. ");
   cb_append_txt(&(ca->cw_title_bar->buffer), version);
   cb_append_txt(&(ca->cw_title_bar->buffer), ")\n");
-  cb_set_text(&(ca->cw_display->buffer), welcome_message);
+  cb_set_txt(&(ca->cw_display->buffer), welcome_message);
   ca_set_info(ca, info_bar_text);
 
   ca_update(ca);

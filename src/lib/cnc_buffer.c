@@ -180,8 +180,6 @@ bool cb_equal(cnc_buffer *cb, cnc_buffer *match)
 
 bool cb_equal_c_str(cnc_buffer *cb, char *str)
 {
-  bool return_value = false;
-
   if (cb == NULL || str == NULL)
   {
     return false;
@@ -194,14 +192,14 @@ bool cb_equal_c_str(cnc_buffer *cb, char *str)
     return false;
   }
 
-  if (cb_set_text(&cb_str, str) == false)
+  if (cb_set_txt(&cb_str, str) == false)
   {
     cb_destroy(&cb_str);
 
     return false;
   }
 
-  return_value = cb_equal(cb, &cb_str);
+  bool return_value = cb_equal(cb, &cb_str);
   cb_destroy(&cb_str);
 
   return return_value;
@@ -352,13 +350,24 @@ bool cb_locate_buffer(cnc_buffer *cb, cnc_buffer *search, size_t *location)
 
 bool cb_locate_c_str(cnc_buffer *cb, const char *str, size_t *location)
 {
-  bool return_value = false;
+  if (cb == NULL || cb->data == NULL || str == NULL || location == NULL)
+  {
+    return false;
+  }
 
   cnc_buffer search;
-  cb_init(&search, strlen(str) + 1);
 
-  cb_set_text(&search, str);
-  return_value = cb_locate_buffer(cb, &search, location);
+  if (cb_init(&search, strlen(str)) == false)
+  {
+    return false;
+  }
+
+  if (cb_set_txt(&search, str) == false)
+  {
+    return false;
+  }
+
+  bool return_value = cb_locate_buffer(cb, &search, location);
 
   cb_destroy(&search);
 
@@ -533,7 +542,6 @@ bool cb_resize(cnc_buffer *cb, size_t new_capacity)
 
 bool cb_set(cnc_buffer *cb, const cnc_term_token token, size_t index)
 {
-
   if (cb == NULL || cb->data == NULL)
   {
     return false;
@@ -544,9 +552,64 @@ bool cb_set(cnc_buffer *cb, const cnc_term_token token, size_t index)
   return true;
 }
 
-bool cb_set_text(cnc_buffer *cb, const char *text)
+bool cb_set_buf(cnc_buffer *dst, cnc_buffer *src)
 {
+  if (dst == NULL || dst->data == NULL || src == NULL || src->data == NULL)
+  {
+    return false;
+  }
+
+  cb_clear(dst);
+
+  return cb_append_buf(dst, src);
+}
+
+bool cb_set_txt(cnc_buffer *cb, const char *text)
+{
+  if (cb == NULL || cb->data == NULL || text == NULL)
+  {
+    return false;
+  }
+
   cb_clear(cb);
 
   return cb_append_txt(cb, text);
+}
+
+bool cb_set_c_str(cnc_buffer *cb, char *dst, size_t dst_size)
+{
+  if (cb == NULL || cb->data == NULL || dst == NULL)
+  {
+    return false;
+  }
+
+  size_t dst_index = 0;
+
+  for (size_t i = 0; i < cb->size; i++)
+  {
+    if (cb->data[i].token.type == CTT_CHAR ||
+        cb->data[i].token.type == CTT_UTF8)
+    {
+      size_t len = cb->data[i].token.length;
+
+      if (dst_index + len >= dst_size)
+      {
+        return false;
+      }
+
+      for (size_t j = 0; j < len; j++)
+      {
+        dst[dst_index++] = cb->data[i].seq[j];
+      }
+    }
+  }
+
+  if (dst_index >= dst_size)
+  {
+    return false;
+  }
+
+  dst[dst_index] = C_NUL;
+
+  return true;
 }

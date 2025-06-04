@@ -49,6 +49,8 @@ bool cb_replace(cnc_buffer *cb, const cnc_term_token *match,
                 const cnc_term_token *replacement);
 bool cb_resize(cnc_buffer *cb, size_t new_capacity);
 bool cb_set(cnc_buffer *cb, const cnc_term_token token, size_t index);
-bool cb_set_text(cnc_buffer *cb, const char *text);
+bool cb_set_buf(cnc_buffer *dst, cnc_buffer *src);
+bool cb_set_txt(cnc_buffer *cb, const char *text);
+bool cb_set_c_str(cnc_buffer *cb, char *dst, size_t dst_size);
 
 #endif

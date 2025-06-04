@@ -1637,7 +1637,7 @@ void ct_update(cnc_terminal *ct)
         {
           for (row = 0; row < cw->frame.height; row++)
           {
-            _ct_render_enter(&buf_ptr);
+            _ct_render_empty_row(&buf_ptr, ct->scr_cols);
           }
           break;
         }
