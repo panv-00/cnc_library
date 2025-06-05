@@ -185,7 +185,7 @@ bool ca_setup(cnc_app *ca, char *version, char *title, char *welcome_message,
   ca->cterm->can_change_focus = false;
 
   cb_set_txt(&(ca->cw_title_bar->buffer), title);
-  cb_append_txt(&(ca->cw_title_bar->buffer), " (v. ");
+  cb_append_txt(&(ca->cw_title_bar->buffer), " (");
   cb_append_txt(&(ca->cw_title_bar->buffer), version);
   cb_append_txt(&(ca->cw_title_bar->buffer), ")\n");
   cb_set_txt(&(ca->cw_display->buffer), welcome_message);
