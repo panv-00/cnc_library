@@ -67,40 +67,59 @@ static void _ct_vm_x(cnc_terminal *ct);
 // private function definitions
 static void _ct_c_clrscr()
 {
-  (void)write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8);
+  if (write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8) == -1)
+  {
+  }
 }
 
 static void _ct_c_home_position()
 {
-  (void)write(STDOUT_FILENO, "\x1b[H", 3);
+  if (write(STDOUT_FILENO, "\x1b[H", 3) == -1)
+  {
+  }
 }
 
 static void _ct_c_hide_cursor()
 {
-  (void)write(STDOUT_FILENO, "\x1b[?25l", 6);
+  if (write(STDOUT_FILENO, "\x1b[?25l", 6) == -1)
+  {
+  }
 }
 
 static void _ct_c_show_cursor()
 {
-  (void)write(STDOUT_FILENO, "\x1b[?25h", 6);
+  if (write(STDOUT_FILENO, "\x1b[?25h", 6) == -1)
+  {
+  }
 }
 
 static void _ct_c_cursor_ins()
 {
-  (void)write(STDOUT_FILENO, "\x1b[5 q", 5);
+  if (write(STDOUT_FILENO, "\x1b[5 q", 5) == -1)
+  {
+  }
 }
 
 static void _ct_c_cursor_cmd()
 {
-  (void)write(STDOUT_FILENO, "\x1b[1 q", 5);
+  if (write(STDOUT_FILENO, "\x1b[1 q", 5) == -1)
+  {
+  }
 }
 
 static void _ct_c_poscursor(size_t col, size_t row)
 {
-  (void)write(STDOUT_FILENO, "\x1b[", 2);
+  if (write(STDOUT_FILENO, "\x1b[", 2) == -1)
+  {
+    return;
+  }
+
   char __buf[43];
   int  __len = sprintf(__buf, "%zu;%zuH", (size_t)(row), (size_t)(col));
-  (void)write(STDOUT_FILENO, __buf, __len);
+
+  if (write(STDOUT_FILENO, __buf, __len) == -1)
+  {
+  }
 }
 
 static void _ct_check_for_suspend(cnc_terminal *ct)
@@ -214,9 +233,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
 
   uint8_t ch[CTT_MAX_TOKEN_SIZE] = {0};
 
-  (void)read(STDIN_FILENO, &ch[0], 1);
-
-  if (bytes_read == 1)
+  if (read(STDIN_FILENO, &ch[0], 1) == 1 && bytes_read == 1)
   {
     return ctt_parse_value(ch[0]);
   }
@@ -242,9 +259,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
     // Already read 1 byte; read the rest
     for (int i = 1; i < utf8_len && i < bytes_read; ++i)
     {
-      (void)read(STDIN_FILENO, &ch[i], 1);
-
-      if ((ch[i] & 0xC0) != 0x80)
+      if (read(STDIN_FILENO, &ch[i], 1) == 1 && (ch[i] & 0xC0) != 0x80)
       {
         // Invalid continuation byte
         return ctt_parse_value(ch[0]);
@@ -262,8 +277,10 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
 
   for (int i = 1; i < bytes_read; i++)
   {
-    (void)read(STDIN_FILENO, &ch[i], 1);
-    ch_sum += ch[i];
+    if (read(STDIN_FILENO, &ch[i], 1) == 1)
+    {
+      ch_sum += ch[i];
+    }
   }
 
   return ctt_parse_value(ch_sum);
@@ -409,7 +426,9 @@ static void _ct_redraw(cnc_terminal *ct)
   }
 
   // write ct->screenbuffer to terminal
-  (void)write(STDOUT_FILENO, ct->screenbuffer, strlen(ct->screenbuffer));
+  if (write(STDOUT_FILENO, ct->screenbuffer, strlen(ct->screenbuffer)) == -1)
+  {
+  }
 
   cnc_widget *cw = ct_focused_widget(ct);
 
@@ -508,7 +527,9 @@ static void _ct_restore(cnc_terminal *ct)
   _ct_c_show_cursor();
 
   // Restore color
-  (void)write(STDOUT_FILENO, STR_RESET_STYLES, 5);
+  if (write(STDOUT_FILENO, STR_RESET_STYLES, 5) == -1)
+  {
+  }
 
   // Clear screen
   _ct_c_clrscr();
