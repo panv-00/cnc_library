@@ -15,6 +15,16 @@ static void __handle__resize(int sig)
 }
 
 // private functions declarations
+// cursor functions
+static void _ct_c_clrscr();
+static void _ct_c_home_position();
+static void _ct_c_hide_cursor();
+static void _ct_c_show_cursor();
+static void _ct_c_cursor_ins();
+static void _ct_c_cursor_cmd();
+static void _ct_c_poscursor(size_t col, size_t row);
+
+// app functions
 static void _ct_check_for_suspend(cnc_terminal *ct);
 static int  _ct_color_code_to_color(int color_code, cnc_term_token *color);
 static void _ct_delete_char(cnc_terminal *ct);
@@ -55,6 +65,44 @@ static void _ct_vm_l(cnc_terminal *ct);
 static void _ct_vm_x(cnc_terminal *ct);
 
 // private function definitions
+static void _ct_c_clrscr()
+{
+  (void)write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8);
+}
+
+static void _ct_c_home_position()
+{
+  (void)write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
+static void _ct_c_hide_cursor()
+{
+  (void)write(STDOUT_FILENO, "\x1b[?25l", 6);
+}
+
+static void _ct_c_show_cursor()
+{
+  (void)write(STDOUT_FILENO, "\x1b[?25h", 6);
+}
+
+static void _ct_c_cursor_ins()
+{
+  (void)write(STDOUT_FILENO, "\x1b[5 q", 5);
+}
+
+static void _ct_c_cursor_cmd()
+{
+  (void)write(STDOUT_FILENO, "\x1b[1 q", 5);
+}
+
+static void _ct_c_poscursor(size_t col, size_t row)
+{
+  (void)write(STDOUT_FILENO, "\x1b[", 2);
+  char __buf[43];
+  int  __len = sprintf(__buf, "%zu;%zuH", (size_t)(row), (size_t)(col));
+  (void)write(STDOUT_FILENO, __buf, __len);
+}
+
 static void _ct_check_for_suspend(cnc_terminal *ct)
 {
   if (ct == NULL)
@@ -166,7 +214,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
 
   uint8_t ch[CTT_MAX_TOKEN_SIZE] = {0};
 
-  read(STDIN_FILENO, &ch[0], 1);
+  (void)read(STDIN_FILENO, &ch[0], 1);
 
   if (bytes_read == 1)
   {
@@ -194,7 +242,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
     // Already read 1 byte; read the rest
     for (int i = 1; i < utf8_len && i < bytes_read; ++i)
     {
-      read(STDIN_FILENO, &ch[i], 1);
+      (void)read(STDIN_FILENO, &ch[i], 1);
 
       if ((ch[i] & 0xC0) != 0x80)
       {
@@ -214,7 +262,7 @@ static cnc_term_token _ct_getch(cnc_terminal *ct)
 
   for (int i = 1; i < bytes_read; i++)
   {
-    read(STDIN_FILENO, &ch[i], 1);
+    (void)read(STDIN_FILENO, &ch[i], 1);
     ch_sum += ch[i];
   }
 
@@ -345,8 +393,8 @@ static void _ct_redraw(cnc_terminal *ct)
     return;
   }
 
-  HIDE_CURSOR;
-  HOME_POSITION;
+  _ct_c_hide_cursor();
+  _ct_c_home_position();
 
   // check if terminal dimensions are within limits
   if (ct->scr_cols < ct->min_width || ct->scr_rows < ct->min_height)
@@ -361,7 +409,7 @@ static void _ct_redraw(cnc_terminal *ct)
   }
 
   // write ct->screenbuffer to terminal
-  write(STDOUT_FILENO, ct->screenbuffer, strlen(ct->screenbuffer));
+  (void)write(STDOUT_FILENO, ct->screenbuffer, strlen(ct->screenbuffer));
 
   cnc_widget *cw = ct_focused_widget(ct);
 
@@ -372,8 +420,8 @@ static void _ct_redraw(cnc_terminal *ct)
       1 + PROMPT_PAD +
         cb_data_width(&cw->buffer, cw->index, cw->data_index - cw->index));
 
-    POSCURSOR(ct->cursor.col, ct->cursor.row);
-    SHOW_CURSOR;
+    _ct_c_poscursor(ct->cursor.col, ct->cursor.row);
+    _ct_c_show_cursor();
   }
 
   fflush(stdout);
@@ -456,15 +504,15 @@ static void _ct_restore(cnc_terminal *ct)
   ct->in_raw_mode = false;
 
   // Restore cursor
-  CURSOR_INS;
-  SHOW_CURSOR;
+  _ct_c_cursor_ins();
+  _ct_c_show_cursor();
 
   // Restore color
-  write(STDOUT_FILENO, STR_RESET_STYLES, 5);
+  (void)write(STDOUT_FILENO, STR_RESET_STYLES, 5);
 
   // Clear screen
-  CLRSCR;
-  HOME_POSITION;
+  _ct_c_clrscr();
+  _ct_c_home_position();
   fflush(stdout);
 }
 
@@ -509,8 +557,8 @@ static bool _ct_set_raw_mode(cnc_terminal *ct)
     return false;
   }
 
-  CLRSCR;
-  HOME_POSITION;
+  _ct_c_clrscr();
+  _ct_c_home_position();
 
   // read the current terminal attributes and store them
   if (tcgetattr(STDIN_FILENO, &ct->orig_term) == -1)
@@ -913,8 +961,8 @@ void ct_check_for_resize(cnc_terminal *ct)
       return;
     }
 
-    CLRSCR;
-    HOME_POSITION;
+    _ct_c_clrscr();
+    _ct_c_home_position();
 
     size_t new_buffer_size = 1 + (ct->scr_cols + 16) * ct->scr_rows * 4;
     char  *new_buffer      = realloc(ct->screenbuffer, new_buffer_size);
@@ -1393,12 +1441,12 @@ void ct_set_mode(cnc_terminal *ct, ct_mode mode)
 
   if (mode == MODE_CMD)
   {
-    CURSOR_CMD;
+    _ct_c_cursor_cmd();
   }
 
   else
   {
-    CURSOR_INS;
+    _ct_c_cursor_ins();
   }
 
   ct->mode = mode;

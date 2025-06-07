@@ -1,8 +1,6 @@
 #ifndef CNC_TERMINAL_H
 #define CNC_TERMINAL_H
 
-// #define _GNU_SOURCE
-
 // using ct as shorthand for cnc_terminal
 
 #include <signal.h>
@@ -16,22 +14,6 @@
 #include "cnc_buffer.h"
 #include "cnc_cursor.h"
 #include "cnc_widget.h"
-
-// Cursor and Screen Stuff
-#define CLRSCR        write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8)
-#define HOME_POSITION write(STDOUT_FILENO, "\x1b[H", 3)
-#define HIDE_CURSOR   write(STDOUT_FILENO, "\x1b[?25l", 6)
-#define SHOW_CURSOR   write(STDOUT_FILENO, "\x1b[?25h", 6)
-#define CURSOR_INS    write(STDOUT_FILENO, "\x1b[5 q", 5)
-#define CURSOR_CMD    write(STDOUT_FILENO, "\x1b[1 q", 5)
-#define POSCURSOR(c, r)                                                        \
-  do                                                                           \
-  {                                                                            \
-    write(STDOUT_FILENO, "\x1b[", 2);                                          \
-    char __buf[43];                                                            \
-    int  __len = sprintf(__buf, "%zu;%zuH", (size_t)(r), (size_t)(c));         \
-    write(STDOUT_FILENO, __buf, __len);                                        \
-  } while (0)
 
 // Reset styles constant
 #define STR_RESET_STYLES "\x1b[0m"
