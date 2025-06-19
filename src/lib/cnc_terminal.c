@@ -594,8 +594,8 @@ static bool _ct_set_raw_mode(cnc_terminal *ct)
   raw_term.c_oflag &= ~(OPOST);
   raw_term.c_cflag |= (CS8);
   raw_term.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-  raw_term.c_cc[VMIN]  = 0;
-  raw_term.c_cc[VTIME] = 1;
+  raw_term.c_cc[VMIN]  = 1;
+  raw_term.c_cc[VTIME] = 0;
 
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw_term) == -1)
   {
