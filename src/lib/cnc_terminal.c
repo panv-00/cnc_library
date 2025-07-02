@@ -67,7 +67,8 @@ static void _ct_vm_x(cnc_terminal *ct);
 // private function definitions
 static void _ct_c_clrscr()
 {
-  if (write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8) == -1)
+  // if (write(STDOUT_FILENO, "\x1b[2J\x1b[3J", 8) == -1)
+  if (write(STDOUT_FILENO, "\x1b\x63", 2) == -1)
   {
   }
 }
