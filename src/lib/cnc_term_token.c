@@ -78,22 +78,6 @@ bool ctt_parse_bytes(uint8_t *bytes, cnc_term_token *ctt)
     return true;
   }
 
-  // ANSI sequence
-  if (bytes[0] == 0x1B)
-  {
-    if (bytes[1] == '[')
-    {
-      // CSI sequence
-      // Parse as discussed earlier
-    }
-
-    else
-    {
-      // Handle ESC + single char (like ESCc, ESC[?25l)
-      // Optional
-    }
-  }
-
   // Control character without sequence
   if (bytes[0] < 0x20 || bytes[0] == 0x7F)
   {
