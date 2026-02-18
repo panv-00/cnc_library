@@ -12,7 +12,7 @@
 // max memory sizes
 #define INFO_BUFFER_SIZE    511
 #define PROMPT_BUFFER_SIZE  511
-#define DISPLAY_BUFFER_SIZE 99999
+#define DISPLAY_BUFFER_SIZE 32767
 
 // prompt symbols
 #define PROMPT_PAD 3
