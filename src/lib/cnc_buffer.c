@@ -457,7 +457,6 @@ bool cb_push(cnc_buffer *cb, const cnc_term_token token)
     _cb_scroll(cb);
   }
 
-  // BUG: app hangs at the line below: buffer 19910/32768
   cb->data[cb->size++] = token;
 
   return true;
